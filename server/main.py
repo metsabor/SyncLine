@@ -98,9 +98,10 @@ def send_verification_email(to_email: str, code: str):
         with smtplib.SMTP_SSL(SMTP_HOST, SMTP_PORT) as server:
             server.login(SMTP_USER, SMTP_PASSWORD)
             server.send_message(msg)
+        print(f"✅ Письмо с кодом {code} отправлено на {to_email}")
         return True
     except Exception as e:
-        print(f"Ошибка отправки письма: {e}")
+        print(f"❌ Ошибка отправки письма: {e}")
         return False
 
 # ==========================================
@@ -164,8 +165,10 @@ async def request_code(email: str):
         "expires_at": expires_at.isoformat(),
         "used": False
     }).execute()
-    # Временно отключаем SMTP — success = True
-    success = True  # <-- замените на send_verification_email(email, code) когда SMTP заработает
+    
+    # ВКЛЮЧАЕМ ОТПРАВКУ ПИСЬМА
+    success = send_verification_email(email, code)
+    
     if not success:
         raise HTTPException(status_code=500, detail="Не удалось отправить письмо")
     return {"success": True, "message": "Код отправлен на почту"}
