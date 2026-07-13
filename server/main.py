@@ -59,6 +59,11 @@ class ChatCreate(BaseModel):
     name: str
     participants: List[str]  # список юзернеймов или id
 
+# ДОБАВЛЯЕМ МОДЕЛЬ ДЛЯ VERIFY-CODE
+class VerifyCodeRequest(BaseModel):
+    email: str
+    code: str
+
 # ==========================================
 # ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ
 # ==========================================
@@ -179,7 +184,7 @@ async def request_code(email: str):
     
     # Временно отключаем отправку письма для теста
     # success = send_verification_email(email, code)
-    success = True  # <-- ВРЕМЕННО ОТКЛЮЧЕНО! Верните обратно когда SMTP заработает
+    success = True  # <-- ВРЕМЕННО ОТКЛЮЧЕНО!
     
     if not success:
         raise HTTPException(status_code=500, detail="Не удалось отправить письмо")
@@ -187,8 +192,11 @@ async def request_code(email: str):
     return {"success": True, "message": "Код отправлен на почту"}
 
 @app.post("/api/auth/verify-code")
-async def verify_code(email: str, code: str):
+async def verify_code(request: VerifyCodeRequest):
     """Проверяет введённый код (упрощённая версия)"""
+    email = request.email
+    code = request.code
+    
     # Ищем любой код для этого email (игнорируем used и expires_at)
     result = supabase.table("verification_codes") \
         .select("*") \
@@ -199,7 +207,7 @@ async def verify_code(email: str, code: str):
     if not result.data:
         raise HTTPException(status_code=400, detail="Неверный код")
     
-    # Если код найден — считаем его верным, удаляем все коды этого email для чистоты
+    # Если код найден — удаляем все коды этого email
     supabase.table("verification_codes") \
         .delete() \
         .eq("email", email) \
