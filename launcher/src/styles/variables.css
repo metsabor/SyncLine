@@ -1,0 +1,47 @@
+:root {
+  /* Палитра темы SyncLine */
+  --bg-dark-base: rgba(14, 11, 22, 0.78);
+  --bg-glass-card: rgba(30, 22, 48, 0.45);
+  --bg-glass-input: rgba(22, 16, 36, 0.6);
+  --bg-glass-hover: rgba(138, 43, 226, 0.18);
+  --bg-glass-active: rgba(138, 43, 226, 0.3);
+
+  /* Фиолетовые акценты */
+  --accent-purple-primary: #8a2be2;
+  --accent-purple-light: #b05bff;
+  --accent-purple-dark: #5c18a3;
+  --accent-purple-glow: rgba(138, 43, 226, 0.45);
+  --accent-purple-bright: #cb7eff;
+
+  /* Градиенты */
+  --gradient-purple: linear-gradient(135deg, #8a2be2 0%, #a04ef6 50%, #7209b7 100%);
+  --gradient-glass-border: linear-gradient(135deg, rgba(255, 255, 255, 0.25), rgba(138, 43, 226, 0.3), rgba(255, 255, 255, 0.05));
+
+  /* Текст */
+  --text-primary: #f8f9fa;
+  --text-secondary: #b5adc4;
+  --text-muted: #7d7291;
+  --text-accent: #d2a0ff;
+
+  /* Элементы управления и статусы */
+  --color-online: #00f098;
+  --color-offline: #6c757d;
+  --color-error: #ff4757;
+  --color-success: #2ed573;
+
+  /* Границы и тени */
+  --border-glass-light: rgba(255, 255, 255, 0.12);
+  --border-glass-purple: rgba(138, 43, 226, 0.35);
+  --shadow-glass: 0 16px 40px 0 rgba(0, 0, 0, 0.45);
+  --shadow-glow: 0 0 20px var(--accent-purple-glow);
+
+  /* Анимации и радиусы */
+  --radius-sm: 8px;
+  --radius-md: 14px;
+  --radius-lg: 22px;
+  --radius-full: 9999px;
+
+  --transition-fast: all 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-normal: all 0.3s cubic-bezier(0.25, 1, 0.5, 1);
+  --transition-bounce: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}

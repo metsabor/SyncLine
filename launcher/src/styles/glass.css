@@ -1,0 +1,133 @@
+/* Основной контейнер стекла */
+.glass-panel {
+  background: var(--bg-glass-card);
+  backdrop-filter: blur(25px) saturate(180%);
+  -webkit-backdrop-filter: blur(25px) saturate(180%);
+  border: 1px solid var(--border-glass-light);
+  box-shadow: var(--shadow-glass);
+  border-radius: var(--radius-md);
+  position: relative;
+  overflow: hidden;
+  transition: var(--transition-normal);
+}
+
+.glass-panel::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
+  pointer-events: none;
+}
+
+.glass-panel-interactive {
+  cursor: pointer;
+}
+
+.glass-panel-interactive:hover {
+  background: var(--bg-glass-hover);
+  border-color: var(--border-glass-purple);
+  box-shadow: var(--shadow-glass), var(--shadow-glow);
+  transform: translateY(-2px);
+}
+
+.glass-panel-interactive:active {
+  transform: translateY(0) scale(0.99);
+}
+
+/* Эффект стекла для полей ввода */
+.glass-input {
+  background: var(--bg-glass-input);
+  backdrop-filter: blur(15px);
+  -webkit-backdrop-filter: blur(15px);
+  border: 1px solid var(--border-glass-light);
+  color: var(--text-primary);
+  border-radius: var(--radius-sm);
+  padding: 12px 16px;
+  font-size: 14px;
+  outline: none;
+  transition: var(--transition-normal);
+  width: 100%;
+}
+
+.glass-input::placeholder {
+  color: var(--text-muted);
+}
+
+.glass-input:focus {
+  border-color: var(--accent-purple-primary);
+  box-shadow: 0 0 12px var(--accent-purple-glow);
+  background: rgba(30, 20, 50, 0.8);
+}
+
+/* Кнопки с фиолетовым свечением */
+.btn-glass-primary {
+  background: var(--gradient-purple);
+  color: #ffffff;
+  border: none;
+  border-radius: var(--radius-sm);
+  padding: 12px 24px;
+  font-weight: 600;
+  font-size: 14px;
+  cursor: pointer;
+  box-shadow: 0 4px 15px var(--accent-purple-glow);
+  transition: var(--transition-bounce);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.btn-glass-primary:hover {
+  transform: translateY(-2px) scale(1.02);
+  box-shadow: 0 6px 25px rgba(138, 43, 226, 0.6);
+  filter: brightness(1.1);
+}
+
+.btn-glass-primary:active {
+  transform: translateY(0) scale(0.97);
+}
+
+.btn-glass-secondary {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--border-glass-light);
+  color: var(--text-primary);
+  border-radius: var(--radius-sm);
+  padding: 12px 20px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: var(--transition-normal);
+}
+
+.btn-glass-secondary:hover {
+  background: var(--bg-glass-hover);
+  border-color: var(--border-glass-purple);
+}
+
+/* Анимации плавного появления компонентов */
+@keyframes fadeInScale {
+  from {
+    opacity: 0;
+    transform: scale(0.95) translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+@keyframes pulseGlow {
+  0% { box-shadow: 0 0 10px var(--accent-purple-glow); }
+  50% { box-shadow: 0 0 25px rgba(138, 43, 226, 0.7); }
+  100% { box-shadow: 0 0 10px var(--accent-purple-glow); }
+}
+
+.animate-fade-in {
+  animation: fadeInScale 0.35s cubic-bezier(0.25, 1, 0.5, 1) forwards;
+}
+
+.pulse-glow {
+  animation: pulseGlow 3s infinite ease-in-out;
+}

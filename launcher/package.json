@@ -1,0 +1,24 @@
+{
+  "name": "syncline",
+  "version": "1.0.0",
+  "description": "Быстрый и стильный мессенджер для передачи файлов, ссылок и сообщений",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "build": "electron-builder"
+  },
+  "keywords": [
+    "syncline",
+    "messenger",
+    "file-transfer",
+    "electron",
+    "glassmorphism"
+  ],
+  "author": "SyncLine Team",
+  "license": "MIT",
+  "devDependencies": {
+    "electron": "^28.2.0",
+    "electron-builder": "^24.9.0"
+  },
+  "dependencies": {}
+}
