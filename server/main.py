@@ -36,6 +36,7 @@ class UserRegister(BaseModel):
     email: EmailStr
     password: str
     username: str
+    telegram_username: Optional[str] = None
 
 class UserLogin(BaseModel):
     email: EmailStr
@@ -57,6 +58,10 @@ class VerifyCodeRequest(BaseModel):
     email: str
     code: str
 
+class TelegramRegisterRequest(BaseModel):
+    username: str  # Telegram username (без @)
+    chat_id: str
+
 # ==========================================
 # ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ
 # ==========================================
@@ -70,18 +75,35 @@ def get_current_user(authorization: str = Header(None)):
     except Exception as e:
         raise HTTPException(status_code=401, detail="Невалидный токен")
 
-def send_telegram_code(code: str):
+def send_telegram_code(code: str, chat_id: str = None):
+    """Отправляет код в Telegram указанному chat_id (или дефолтному)"""
+    if chat_id is None:
+        chat_id = TELEGRAM_CHAT_ID
+    
     url = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendMessage"
-    text = f"🔐 **Ваш код для входа в SyncLine:**\n\n`{code}`\n\n*Введите этот код в приложении.*"
+    text = f"""🔐 **Код для входа в SyncLine: {code}**
+
+*Не давайте этот код никому, даже если кто-то представляется сотрудником SyncLine.*
+
+Этот код используется для входа в Ваш аккаунт. Он не может быть использован для чего-либо ещё.
+
+Если Вы не запрашивали код для входа в аккаунт на другом устройстве, проигнорируйте это сообщение.
+
+---
+
+*С наилучшими пожеланиями,*  
+**Команда SyncLine**"""
+    
     payload = {
-        "chat_id": TELEGRAM_CHAT_ID,
+        "chat_id": chat_id,
         "text": text,
         "parse_mode": "Markdown"
     }
+    
     try:
         response = requests.post(url, json=payload, timeout=10)
         if response.status_code == 200:
-            print(f"✅ Код {code} отправлен в Telegram")
+            print(f"✅ Код {code} отправлен в Telegram (chat_id: {chat_id})")
             return True
         else:
             print(f"❌ Ошибка Telegram: {response.status_code} - {response.text}")
@@ -102,12 +124,18 @@ async def register(user: UserRegister):
         })
         if not response.user:
             raise HTTPException(status_code=400, detail="Ошибка регистрации")
-        supabase.table("users").insert({
+        
+        # Сохраняем в таблицу users
+        user_data = {
             "id": response.user.id,
             "username": user.username,
             "email": user.email,
             "created_at": datetime.utcnow().isoformat()
-        }).execute()
+        }
+        if user.telegram_username:
+            user_data["telegram_username"] = user.telegram_username
+        
+        supabase.table("users").insert(user_data).execute()
         return {"success": True, "user_id": response.user.id, "message": "Регистрация успешна"}
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
@@ -128,6 +156,7 @@ async def login(user: UserLogin):
                 "id": response.user.id,
                 "email": response.user.email,
                 "username": profile.data[0].get("username") if profile.data else user.email,
+                "telegram_username": profile.data[0].get("telegram_username") if profile.data else None,
             },
             "session": response.session.access_token
         }
@@ -152,7 +181,14 @@ async def request_code(email: str):
         "used": False
     }).execute()
     
-    success = send_telegram_code(code)
+    # Ищем chat_id пользователя по email
+    user = supabase.table("users").select("telegram_chat_id").eq("email", email).execute()
+    chat_id = None
+    if user.data and user.data[0].get("telegram_chat_id"):
+        chat_id = user.data[0]["telegram_chat_id"]
+    
+    # Если chat_id найден — отправляем туда, иначе — на дефолтный
+    success = send_telegram_code(code, chat_id)
     if not success:
         raise HTTPException(status_code=500, detail="Не удалось отправить код")
     
@@ -176,7 +212,25 @@ async def verify_code(request: VerifyCodeRequest):
     return {"success": True, "message": "Код подтверждён"}
 
 # ==========================================
-# ОСТАЛЬНЫЕ ЭНДПОИНТЫ (чаты, сообщения)
+# ЭНДПОИНТЫ ДЛЯ РЕГИСТРАЦИИ TELEGRAM USERNAME
+# ==========================================
+@app.post("/api/bot/register")
+async def register_telegram_user(request: TelegramRegisterRequest):
+    """Сохраняет связь Telegram username ↔ chat_id"""
+    # Ищем пользователя по telegram_username
+    user = supabase.table("users").select("id").eq("telegram_username", request.username).execute()
+    if not user.data:
+        raise HTTPException(status_code=404, detail="Пользователь с таким Telegram username не найден")
+    
+    # Обновляем chat_id
+    supabase.table("users").update({
+        "telegram_chat_id": request.chat_id
+    }).eq("id", user.data[0]["id"]).execute()
+    
+    return {"success": True, "message": "Telegram привязан к аккаунту"}
+
+# ==========================================
+# ОСТАЛЬНЫЕ ЭНДПОИНТЫ (чаты, сообщения, статус)
 # ==========================================
 @app.get("/api/chats")
 async def get_chats(user=Depends(get_current_user)):
