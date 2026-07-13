@@ -1,23 +1,20 @@
 import os
 import uuid
-import smtplib
 import random
+import requests
 from datetime import datetime, timedelta
-from email.mime.text import MIMEText
-from email.mime.multipart import MIMEMultipart
 from fastapi import FastAPI, HTTPException, Depends, Header
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, EmailStr
 from typing import Optional, List
 from supabase_client import supabase
 from dotenv import load_dotenv
-import httpx
 
 load_dotenv()
 
 app = FastAPI(title="SyncLine API", version="1.0.0")
 
-# CORS — разрешаем запросы из лаунчера
+# CORS
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -27,16 +24,13 @@ app.add_middleware(
 )
 
 # ==========================================
-# НАСТРОЙКИ SMTP (Mail.ru)
+# НАСТРОЙКИ TELEGRAM (ТВОИ ДАННЫЕ)
 # ==========================================
-SMTP_HOST = "smtp.mail.ru"
-SMTP_PORT = 465  # SSL
-SMTP_USER = "syncline@internet.ru"
-SMTP_PASSWORD = "eGGbjeOrgNtgpYdtciEK"  # пароль для внешнего приложения
-FROM_EMAIL = "syncline@internet.ru"
+TELEGRAM_BOT_TOKEN = "8616052823:AAGDSIvPZG33rqPJ_37nS2AraCaLh2Pc9vM"
+TELEGRAM_CHAT_ID = "8560498548"  # <-- ТВОЙ CHAT_ID
 
 # ==========================================
-# МОДЕЛИ ДАННЫХ (Pydantic)
+# МОДЕЛИ ДАННЫХ
 # ==========================================
 class UserRegister(BaseModel):
     email: EmailStr
@@ -67,7 +61,6 @@ class VerifyCodeRequest(BaseModel):
 # ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ
 # ==========================================
 def get_current_user(authorization: str = Header(None)):
-    """Получаем пользователя из Supabase по JWT токену"""
     if not authorization:
         raise HTTPException(status_code=401, detail="Не авторизован")
     token = authorization.replace("Bearer ", "")
@@ -77,31 +70,24 @@ def get_current_user(authorization: str = Header(None)):
     except Exception as e:
         raise HTTPException(status_code=401, detail="Невалидный токен")
 
-def send_verification_email(to_email: str, code: str):
-    """Отправляет письмо с кодом подтверждения"""
-    subject = "Код подтверждения SyncLine"
-    body = f"""
-    <html>
-      <body>
-        <p><b>Ваш код: {code}.</b> Это сообщение можно использовать для входа в <b>SyncLine.</b></p>
-        <p>Если вы не отправляли запрос на получение этого уведомления, просто не обращайте на него внимания.</p>
-        <p><i>С наилучшими пожеланиями,<br>Команда <b>SyncLine</b>.</i></p>
-      </body>
-    </html>
-    """
-    msg = MIMEMultipart()
-    msg['From'] = FROM_EMAIL
-    msg['To'] = to_email
-    msg['Subject'] = subject
-    msg.attach(MIMEText(body, 'html'))
+def send_telegram_code(code: str):
+    url = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendMessage"
+    text = f"🔐 **Ваш код для входа в SyncLine:**\n\n`{code}`\n\n*Введите этот код в приложении.*"
+    payload = {
+        "chat_id": TELEGRAM_CHAT_ID,
+        "text": text,
+        "parse_mode": "Markdown"
+    }
     try:
-        with smtplib.SMTP_SSL(SMTP_HOST, SMTP_PORT) as server:
-            server.login(SMTP_USER, SMTP_PASSWORD)
-            server.send_message(msg)
-        print(f"✅ Письмо с кодом {code} отправлено на {to_email}")
-        return True
+        response = requests.post(url, json=payload, timeout=10)
+        if response.status_code == 200:
+            print(f"✅ Код {code} отправлен в Telegram")
+            return True
+        else:
+            print(f"❌ Ошибка Telegram: {response.status_code} - {response.text}")
+            return False
     except Exception as e:
-        print(f"❌ Ошибка отправки письма: {e}")
+        print(f"❌ Ошибка отправки в Telegram: {e}")
         return False
 
 # ==========================================
@@ -166,12 +152,11 @@ async def request_code(email: str):
         "used": False
     }).execute()
     
-    # ВКЛЮЧАЕМ ОТПРАВКУ ПИСЬМА
-    success = send_verification_email(email, code)
-    
+    success = send_telegram_code(code)
     if not success:
-        raise HTTPException(status_code=500, detail="Не удалось отправить письмо")
-    return {"success": True, "message": "Код отправлен на почту"}
+        raise HTTPException(status_code=500, detail="Не удалось отправить код")
+    
+    return {"success": True, "message": "Код отправлен в Telegram"}
 
 @app.post("/api/auth/verify-code")
 async def verify_code(request: VerifyCodeRequest):
@@ -191,7 +176,7 @@ async def verify_code(request: VerifyCodeRequest):
     return {"success": True, "message": "Код подтверждён"}
 
 # ==========================================
-# ЭНДПОИНТЫ ЧАТОВ
+# ОСТАЛЬНЫЕ ЭНДПОИНТЫ (чаты, сообщения)
 # ==========================================
 @app.get("/api/chats")
 async def get_chats(user=Depends(get_current_user)):
@@ -225,9 +210,6 @@ async def create_chat(chat: ChatCreate, user=Depends(get_current_user)):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-# ==========================================
-# ЭНДПОИНТЫ СООБЩЕНИЙ
-# ==========================================
 @app.get("/api/messages/{chat_id}")
 async def get_messages(chat_id: str, limit: int = 50, before: Optional[str] = None, user=Depends(get_current_user)):
     try:
@@ -269,9 +251,6 @@ async def delete_message(message_id: int, user=Depends(get_current_user)):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-# ==========================================
-# ЭНДПОИНТЫ ДЛЯ СТАТУСА ПОЛЬЗОВАТЕЛЯ
-# ==========================================
 @app.post("/api/users/status")
 async def update_status(status: str, user=Depends(get_current_user)):
     try:

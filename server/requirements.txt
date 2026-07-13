@@ -6,3 +6,4 @@ pydantic[email]
 python-multipart
 httpx
 email-validator
+requests
