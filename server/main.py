@@ -20,7 +20,7 @@ app = FastAPI(title="SyncLine API", version="1.0.0")
 # CORS — разрешаем запросы из лаунчера
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Для продакшена заменить на домен лаунчера
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -50,16 +50,15 @@ class UserLogin(BaseModel):
 class MessageCreate(BaseModel):
     chat_id: str
     text: str
-    type: str = "text"  # text, file, image, video
+    type: str = "text"
     file_url: Optional[str] = None
     is_one_time: bool = False
     reply_to: Optional[int] = None
 
 class ChatCreate(BaseModel):
     name: str
-    participants: List[str]  # список юзернеймов или id
+    participants: List[str]
 
-# ДОБАВЛЯЕМ МОДЕЛЬ ДЛЯ VERIFY-CODE
 class VerifyCodeRequest(BaseModel):
     email: str
     code: str
@@ -71,7 +70,6 @@ def get_current_user(authorization: str = Header(None)):
     """Получаем пользователя из Supabase по JWT токену"""
     if not authorization:
         raise HTTPException(status_code=401, detail="Не авторизован")
-    
     token = authorization.replace("Bearer ", "")
     try:
         user = supabase.auth.get_user(token)
@@ -82,7 +80,6 @@ def get_current_user(authorization: str = Header(None)):
 def send_verification_email(to_email: str, code: str):
     """Отправляет письмо с кодом подтверждения"""
     subject = "Код подтверждения SyncLine"
-    
     body = f"""
     <html>
       <body>
@@ -92,13 +89,11 @@ def send_verification_email(to_email: str, code: str):
       </body>
     </html>
     """
-    
     msg = MIMEMultipart()
     msg['From'] = FROM_EMAIL
     msg['To'] = to_email
     msg['Subject'] = subject
     msg.attach(MIMEText(body, 'html'))
-    
     try:
         with smtplib.SMTP_SSL(SMTP_HOST, SMTP_PORT) as server:
             server.login(SMTP_USER, SMTP_PASSWORD)
@@ -113,41 +108,33 @@ def send_verification_email(to_email: str, code: str):
 # ==========================================
 @app.post("/api/auth/register")
 async def register(user: UserRegister):
-    """Регистрация нового пользователя"""
     try:
         response = supabase.auth.sign_up({
             "email": user.email,
             "password": user.password,
         })
-        
         if not response.user:
             raise HTTPException(status_code=400, detail="Ошибка регистрации")
-        
         supabase.table("users").insert({
             "id": response.user.id,
             "username": user.username,
             "email": user.email,
             "created_at": datetime.utcnow().isoformat()
         }).execute()
-        
         return {"success": True, "user_id": response.user.id, "message": "Регистрация успешна"}
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
 
 @app.post("/api/auth/login")
 async def login(user: UserLogin):
-    """Вход пользователя"""
     try:
         response = supabase.auth.sign_in_with_password({
             "email": user.email,
             "password": user.password
         })
-        
         if not response.user:
             raise HTTPException(status_code=401, detail="Неверные данные")
-        
         profile = supabase.table("users").select("*").eq("id", response.user.id).execute()
-        
         return {
             "success": True,
             "user": {
@@ -162,18 +149,14 @@ async def login(user: UserLogin):
 
 @app.post("/api/auth/logout")
 async def logout(user=Depends(get_current_user)):
-    """Выход из системы"""
     return {"success": True, "message": "Выход выполнен"}
 
 # ==========================================
-# ЭНДПОИНТЫ ДЛЯ КОДА ПОДТВЕРЖДЕНИЯ
+# ЭНДПОИНТЫ КОДА ПОДТВЕРЖДЕНИЯ
 # ==========================================
-
 @app.post("/api/auth/request-code")
 async def request_code(email: str):
-    """Генерирует и отправляет код подтверждения на email"""
     code = "".join(str(random.randint(0, 9)) for _ in range(5))
-    
     expires_at = datetime.utcnow() + timedelta(minutes=5)
     supabase.table("verification_codes").insert({
         "email": email,
@@ -181,38 +164,27 @@ async def request_code(email: str):
         "expires_at": expires_at.isoformat(),
         "used": False
     }).execute()
-    
-    # Временно отключаем отправку письма для теста
-    # success = send_verification_email(email, code)
-    success = True  # <-- ВРЕМЕННО ОТКЛЮЧЕНО!
-    
+    # Временно отключаем SMTP — success = True
+    success = True  # <-- замените на send_verification_email(email, code) когда SMTP заработает
     if not success:
         raise HTTPException(status_code=500, detail="Не удалось отправить письмо")
-    
     return {"success": True, "message": "Код отправлен на почту"}
 
 @app.post("/api/auth/verify-code")
 async def verify_code(request: VerifyCodeRequest):
-    """Проверяет введённый код (упрощённая версия)"""
     email = request.email
     code = request.code
-    
-    # Ищем любой код для этого email (игнорируем used и expires_at)
     result = supabase.table("verification_codes") \
         .select("*") \
         .eq("email", email) \
         .eq("code", code) \
         .execute()
-    
     if not result.data:
         raise HTTPException(status_code=400, detail="Неверный код")
-    
-    # Если код найден — удаляем все коды этого email
     supabase.table("verification_codes") \
         .delete() \
         .eq("email", email) \
         .execute()
-    
     return {"success": True, "message": "Код подтверждён"}
 
 # ==========================================
@@ -220,7 +192,6 @@ async def verify_code(request: VerifyCodeRequest):
 # ==========================================
 @app.get("/api/chats")
 async def get_chats(user=Depends(get_current_user)):
-    """Получить все чаты пользователя"""
     try:
         chats = supabase.table("chats").select("*").execute()
         return {"chats": chats.data}
@@ -229,16 +200,13 @@ async def get_chats(user=Depends(get_current_user)):
 
 @app.post("/api/chats")
 async def create_chat(chat: ChatCreate, user=Depends(get_current_user)):
-    """Создать новый чат"""
     try:
         new_chat = supabase.table("chats").insert({
             "name": chat.name,
             "type": "private" if len(chat.participants) == 1 else "group",
             "created_at": datetime.utcnow().isoformat()
         }).execute()
-        
         chat_id = new_chat.data[0]["id"]
-        
         for username in chat.participants:
             user_data = supabase.table("users").select("id").eq("username", username).execute()
             if user_data.data:
@@ -246,12 +214,10 @@ async def create_chat(chat: ChatCreate, user=Depends(get_current_user)):
                     "chat_id": chat_id,
                     "user_id": user_data.data[0]["id"]
                 }).execute()
-        
         supabase.table("participants").insert({
             "chat_id": chat_id,
             "user_id": user.id
         }).execute()
-        
         return {"success": True, "chat_id": chat_id}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
@@ -261,7 +227,6 @@ async def create_chat(chat: ChatCreate, user=Depends(get_current_user)):
 # ==========================================
 @app.get("/api/messages/{chat_id}")
 async def get_messages(chat_id: str, limit: int = 50, before: Optional[str] = None, user=Depends(get_current_user)):
-    """Получить сообщения чата"""
     try:
         query = supabase.table("messages").select("*").eq("chat_id", chat_id).order("created_at", desc=False).limit(limit)
         if before:
@@ -273,7 +238,6 @@ async def get_messages(chat_id: str, limit: int = 50, before: Optional[str] = No
 
 @app.post("/api/messages")
 async def send_message(msg: MessageCreate, user=Depends(get_current_user)):
-    """Отправить сообщение"""
     try:
         new_msg = supabase.table("messages").insert({
             "chat_id": msg.chat_id,
@@ -285,33 +249,28 @@ async def send_message(msg: MessageCreate, user=Depends(get_current_user)):
             "reply_to": msg.reply_to,
             "created_at": datetime.utcnow().isoformat()
         }).execute()
-        
         return {"success": True, "message": new_msg.data[0]}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.delete("/api/messages/{message_id}")
 async def delete_message(message_id: int, user=Depends(get_current_user)):
-    """Удалить сообщение (только своё)"""
     try:
         msg = supabase.table("messages").select("*").eq("id", message_id).execute()
         if not msg.data:
             raise HTTPException(status_code=404, detail="Сообщение не найдено")
-        
         if msg.data[0]["sender_id"] != user.id:
             raise HTTPException(status_code=403, detail="Нельзя удалить чужое сообщение")
-        
         supabase.table("messages").update({"is_deleted": True}).eq("id", message_id).execute()
         return {"success": True}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
 # ==========================================
-# ЭНДПОИНТЫ ДЛЯ СИНХРОНИЗАЦИИ СТАТУСОВ
+# ЭНДПОИНТЫ ДЛЯ СТАТУСА ПОЛЬЗОВАТЕЛЯ
 # ==========================================
 @app.post("/api/users/status")
 async def update_status(status: str, user=Depends(get_current_user)):
-    """Обновить статус пользователя"""
     try:
         supabase.table("users").update({"status": status, "last_seen": datetime.utcnow().isoformat()}).eq("id", user.id).execute()
         return {"success": True}
