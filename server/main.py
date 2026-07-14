@@ -137,8 +137,8 @@ async def register(user: UserRegister):
         existing = supabase.table("users").select("id").eq("username", user.username).execute()
         if existing.data:
             raise HTTPException(status_code=400, detail="Этот Telegram username уже используется")
-        # ИСПРАВЛЕННЫЙ ДОМЕН — mail.ru
-        fake_email = f"{user.username}@mail.ru"
+        # ИСПРАВЛЕННЫЙ ДОМЕН — gmail.com
+        fake_email = f"{user.username}@gmail.com"
         response = supabase.auth.sign_up({"email": fake_email, "password": user.password})
         if not response.user:
             raise HTTPException(status_code=400, detail="Ошибка регистрации")
@@ -157,8 +157,8 @@ async def login(user: UserLogin):
         profile = supabase.table("users").select("*").eq("username", user.username).execute()
         if not profile.data:
             raise HTTPException(status_code=401, detail="Пользователь не найден")
-        # ИСПРАВЛЕННЫЙ ДОМЕН — mail.ru
-        fake_email = f"{user.username}@mail.ru"
+        # ИСПРАВЛЕННЫЙ ДОМЕН — gmail.com
+        fake_email = f"{user.username}@gmail.com"
         response = supabase.auth.sign_in_with_password({"email": fake_email, "password": user.password})
         if not response.user:
             raise HTTPException(status_code=401, detail="Неверный пароль")
@@ -180,8 +180,8 @@ async def logout(user=Depends(get_current_user)):
 @app.post("/api/auth/change-password")
 async def change_password(data: ChangePassword, user=Depends(get_current_user)):
     try:
-        # ИСПРАВЛЕННЫЙ ДОМЕН — mail.ru
-        fake_email = f"{user.user_metadata.get('username', user.email)}@mail.ru"
+        # ИСПРАВЛЕННЫЙ ДОМЕН — gmail.com
+        fake_email = f"{user.user_metadata.get('username', user.email)}@gmail.com"
         try:
             supabase.auth.sign_in_with_password({"email": fake_email, "password": data.old_password})
         except:
@@ -287,8 +287,8 @@ async def telegram_webhook(request: Request):
         if existing.data:
             send_telegram_message(chat_id, f"❌ Username `@{username}` уже занят. Попробуйте другой.")
             return {"ok": True}
-        # ИСПРАВЛЕННЫЙ ДОМЕН — mail.ru
-        fake_email = f"{username}@mail.ru"
+        # ИСПРАВЛЕННЫЙ ДОМЕН — gmail.com
+        fake_email = f"{username}@gmail.com"
         temp_password = "".join(random.choices("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789", k=12))
         try:
             response = supabase.auth.sign_up({"email": fake_email, "password": temp_password})
