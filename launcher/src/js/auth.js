@@ -1,109 +1,91 @@
 /**
- * SyncLine — Auth Manager (Авторизация, Настройки, Эффекты, Безопасность)
+ * SyncLine — Auth Manager (Авторизация по Telegram username)
  * Версия: 3.5 — Дивергентный апгрейд
  */
 
-// ==========================================
-// ГЛОБАЛЬНЫЙ URL API (БЕЗ process.env)
-// ==========================================
 const API_URL = 'https://syncline-f44k.onrender.com';
 
-/* ==========================================
-   СИСТЕМА КАСТОМНЫХ УВЕДОМЛЕНИЙ (ТОСТЫ)
-   ========================================== */
 function showCustomToast(message, type = 'info') {
   const container = document.getElementById('toast-container');
   if (!container) return;
+  if (typeof message === 'object') message = JSON.stringify(message);
   const toast = document.createElement('div');
   toast.className = `toast ${type}`;
-  
   let icon = 'fa-circle-info';
   if(type === 'error') icon = 'fa-circle-exclamation';
   if(type === 'success') icon = 'fa-circle-check';
   if(type === 'warning') icon = 'fa-triangle-exclamation';
-
   toast.innerHTML = `<i class="fa-solid ${icon}"></i> <span>${message}</span>`;
   container.appendChild(toast);
-
   setTimeout(() => toast.classList.add('show'), 10);
-  setTimeout(() => {
-    toast.classList.remove('show');
-    setTimeout(() => toast.remove(), 400);
-  }, 3500);
+  setTimeout(() => { toast.classList.remove('show'); setTimeout(() => toast.remove(), 400); }, 3500);
 }
-
 window.alert = (msg) => showCustomToast(msg, "warning");
 
-/* ==========================================
-   ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ ДЛЯ ЗАПРОСОВ К API
-   ========================================== */
 async function apiRequest(endpoint, method = 'GET', body = null, token = null) {
-  const headers = {
-    'Content-Type': 'application/json',
-  };
-  if (token) {
-    headers['Authorization'] = `Bearer ${token}`;
-  }
-  
-  const options = {
-    method,
-    headers,
-  };
-  if (body) {
-    options.body = JSON.stringify(body);
-  }
-  
+  const headers = { 'Content-Type': 'application/json' };
+  if (token) headers['Authorization'] = `Bearer ${token}`;
+  const options = { method, headers };
+  if (body) options.body = JSON.stringify(body);
   const response = await fetch(`${API_URL}${endpoint}`, options);
   if (!response.ok) {
     const error = await response.json();
-    throw new Error(error.detail || 'Ошибка запроса');
+    throw new Error(error.detail || error.message || 'Ошибка запроса');
   }
   return response.json();
 }
 
-async function requestCode(email) {
+async function requestCode(username) {
   try {
-    const response = await fetch(`${API_URL}/api/auth/request-code?email=${encodeURIComponent(email)}`, {
-      method: 'POST'
-    });
+    const response = await fetch(`${API_URL}/api/auth/request-code?username=${encodeURIComponent(username)}`, { method: 'POST' });
     if (!response.ok) {
       const error = await response.json();
-      throw new Error(error.detail || 'Ошибка запроса кода');
+      throw new Error(error.detail || error.message || 'Ошибка запроса кода');
     }
     return true;
   } catch (error) {
-    showCustomToast(error.message, 'error');
+    showCustomToast(error.message || 'Ошибка', 'error');
     return false;
   }
 }
 
-async function verifyCode(email, code) {
+async function verifyCode(username, code) {
   try {
     const response = await fetch(`${API_URL}/api/auth/verify-code`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email, code })
+      body: JSON.stringify({ username, code })
     });
     if (!response.ok) {
       const error = await response.json();
-      throw new Error(error.detail || 'Неверный код');
+      throw new Error(error.detail || error.message || 'Неверный код');
     }
     return true;
   } catch (error) {
-    showCustomToast(error.message, 'error');
+    showCustomToast(error.message || 'Ошибка', 'error');
+    return false;
+  }
+}
+
+async function changePassword(oldPassword, newPassword, token) {
+  try {
+    const result = await apiRequest('/api/auth/change-password', 'POST', { old_password: oldPassword, new_password: newPassword }, token);
+    showCustomToast('Пароль успешно изменён!', 'success');
+    return true;
+  } catch (error) {
+    showCustomToast(error.message || 'Ошибка смены пароля', 'error');
     return false;
   }
 }
 
 // ==========================================
-// SettingsManager (ОСТАЁТСЯ БЕЗ ИЗМЕНЕНИЙ)
+// SettingsManager (без email)
 // ==========================================
 class SettingsManager {
   constructor() {
     this.loadSettings();
     this.createEffectsContainer();
   }
-
   createEffectsContainer() {
     let container = document.getElementById('effects-container');
     if (!container) {
@@ -112,7 +94,6 @@ class SettingsManager {
       document.body.prepend(container);
     }
   }
-
   loadSettings() {
     const saved = localStorage.getItem('syncline_settings');
     if (saved) {
@@ -120,109 +101,50 @@ class SettingsManager {
     } else {
       this.settings = {
         username: '@user',
-        email: 'syncline@internet.ru',
         theme: 'dark',
         blurStrength: 80,
         avatarPath: null,
         blockedUsers: [],
         verifiedUsers: ['SyncLine Bot'],
-        macros: {
-          screenshot: 'Ctrl+Shift+S',
-          clearChat: 'Ctrl+Shift+E'
-        },
-        effects: {
-          snow: false,
-          rain: false,
-          leaves: false,
-          particles: false
-        },
-        security: {
-          twoFactor: false,
-          sessions: [
-            { id: 1, name: 'Windows • Chrome', time: 'Сейчас', isCurrent: true },
-            { id: 2, name: 'Android • SyncLine App', time: '2 часа назад', isCurrent: false }
-          ]
-        }
+        macros: { screenshot: 'Ctrl+Shift+S', clearChat: 'Ctrl+Shift+E' },
+        effects: { snow: false, rain: false, leaves: false, particles: false },
+        security: { twoFactor: false, sessions: [ { id: 1, name: 'Windows • Chrome', time: 'Сейчас', isCurrent: true } ] }
       };
       this.saveSettings();
     }
     return this.settings;
   }
-
-  saveSettings() {
-    localStorage.setItem('syncline_settings', JSON.stringify(this.settings));
-  }
-
-  updateUsername(username) {
-    this.settings.username = username;
-    this.saveSettings();
-  }
-
-  updateEmail(email) {
-    this.settings.email = email;
-    this.saveSettings();
-    localStorage.setItem('syncline_current_email', email);
-  }
-
-  updateAvatar(path) {
-    this.settings.avatarPath = path;
-    this.saveSettings();
-  }
-
-  updateTheme(theme) {
-    this.settings.theme = theme;
-    this.saveSettings();
-    this.applyTheme(theme);
-  }
-
-  getCurrentEmail() {
-    return localStorage.getItem('syncline_current_email') || this.settings.email || '';
-  }
-
+  saveSettings() { localStorage.setItem('syncline_settings', JSON.stringify(this.settings)); }
+  updateUsername(username) { this.settings.username = username; this.saveSettings(); }
+  updateAvatar(path) { this.settings.avatarPath = path; this.saveSettings(); }
+  updateTheme(theme) { this.settings.theme = theme; this.saveSettings(); this.applyTheme(theme); }
   toggleBlockUser(username) {
     const index = this.settings.blockedUsers.indexOf(username);
-    if (index > -1) {
-      this.settings.blockedUsers.splice(index, 1);
-    } else {
-      this.settings.blockedUsers.push(username);
-    }
+    if (index > -1) this.settings.blockedUsers.splice(index, 1);
+    else this.settings.blockedUsers.push(username);
     this.saveSettings();
-    return this.settings.blockedUsers;
   }
-
   toggleVerifyUser(username) {
     const index = this.settings.verifiedUsers.indexOf(username);
-    if (index > -1) {
-      this.settings.verifiedUsers.splice(index, 1);
-    } else {
-      this.settings.verifiedUsers.push(username);
-    }
+    if (index > -1) this.settings.verifiedUsers.splice(index, 1);
+    else this.settings.verifiedUsers.push(username);
     this.saveSettings();
-    return this.settings.verifiedUsers;
   }
-
   toggleEffect(effectName) {
     this.settings.effects[effectName] = !this.settings.effects[effectName];
     this.saveSettings();
     this.applyEffects();
   }
-
   applyEffects() {
     const container = document.getElementById('effects-container');
-    if (!container) {
-      this.createEffectsContainer();
-      return this.applyEffects();
-    }
-    
+    if (!container) { this.createEffectsContainer(); return this.applyEffects(); }
     container.innerHTML = '';
     const e = this.settings.effects;
-    
     if (e.snow) this.createParticles(container, '❄️', 30, 'fallSnow');
     if (e.rain) this.createParticles(container, '💧', 60, 'fallRain');
     if (e.leaves) this.createParticles(container, '🍃', 20, 'fallLeaves');
     if (e.particles) this.createParticles(container, '✨', 40, 'floatParticles');
   }
-
   createParticles(container, char, count, animClass) {
     for (let i = 0; i < count; i++) {
       const p = document.createElement('div');
@@ -236,14 +158,12 @@ class SettingsManager {
       container.appendChild(p);
     }
   }
-
   resetEffects() {
     this.settings.effects = { snow: false, rain: false, leaves: false, particles: false };
     this.saveSettings();
     this.applyEffects();
     showCustomToast('Эффекты сброшены', 'success');
   }
-
   applyTheme(theme) {
     const root = document.documentElement;
     if (theme === 'light') {
@@ -266,7 +186,6 @@ class SettingsManager {
       root.style.setProperty('--shadow-glass', '0 16px 40px 0 rgba(0, 0, 0, 0.5)');
     }
   }
-
   applyBlur(strength) {
     const panels = document.querySelectorAll('.glass-panel, .glass-input, .toast, .settings-fullscreen-overlay, .crop-card');
     const blurValue = `${strength}px`;
@@ -278,19 +197,21 @@ class SettingsManager {
 }
 
 // ==========================================
-// ОСНОВНОЙ МЕНЕДЖЕР АВТОРИЗАЦИИ
+// ОСНОВНОЙ МЕНЕДЖЕР
 // ==========================================
 class AuthManager {
   constructor() {
     this.userAvatarPath = null;
     this.username = '';
-    this.currentEmail = '';
+    this.currentUsername = '';
     this.tempCropPath = null;
     this.settings = new SettingsManager();
     this.cropCallback = null;
     this.retryTimer = null;
     this.retryCountdown = 0;
     this.isCodeRequested = false;
+    this.sendButtonLocked = false;
+    this.resendButtonLocked = false;
     
     this.token = localStorage.getItem('syncline_token') || null;
     this.user = localStorage.getItem('syncline_user') ? JSON.parse(localStorage.getItem('syncline_user')) : null;
@@ -306,7 +227,7 @@ class AuthManager {
 
     if (this.user && this.token) {
       document.getElementById('current-user-name').textContent = this.user.username || this.settings.settings.username;
-      this.switchScreen('auth-screen-email', 'main-workspace');
+      this.switchScreen('auth-screen-username', 'main-workspace');
       if (window.companionManager) window.companionManager.initDemoChat();
     }
   }
@@ -317,14 +238,9 @@ class AuthManager {
     if (s.theme) this.settings.applyTheme(s.theme);
     if (s.blurStrength) this.settings.applyBlur(s.blurStrength);
     this.settings.applyEffects();
-
     document.querySelectorAll('.effect-toggle').forEach(btn => {
       if (s.effects[btn.dataset.effect]) btn.classList.add('active');
     });
-
-    if (s.email) {
-      localStorage.setItem('syncline_current_email', s.email);
-    }
   }
 
   openCropper(filePath, callback) {
@@ -341,15 +257,18 @@ class AuthManager {
     document.getElementById('modal-crop').classList.add('show');
   }
 
-  async login(email, password) {
+  async login(username, password) {
     try {
-      const result = await apiRequest('/api/auth/login', 'POST', { email, password });
+      const result = await apiRequest('/api/auth/login', 'POST', { username, password });
       if (result.success) {
         this.user = result.user;
         this.token = result.session;
         localStorage.setItem('syncline_token', this.token);
         localStorage.setItem('syncline_user', JSON.stringify(this.user));
         showCustomToast(`Добро пожаловать, ${this.user.username}!`, 'success');
+        if (window.companionManager) {
+          window.companionManager.sendLoginNotification(this.user.username);
+        }
         return true;
       }
     } catch (error) {
@@ -358,9 +277,9 @@ class AuthManager {
     }
   }
 
-  async register(email, password, username) {
+  async register(username, password) {
     try {
-      const result = await apiRequest('/api/auth/register', 'POST', { email, password, username });
+      const result = await apiRequest('/api/auth/register', 'POST', { username, password });
       if (result.success) {
         showCustomToast('Регистрация успешна!', 'success');
         return true;
@@ -380,17 +299,61 @@ class AuthManager {
     localStorage.removeItem('syncline_token');
     localStorage.removeItem('syncline_user');
     showCustomToast('Вы вышли из системы', 'info');
-    this.switchScreen('main-workspace', 'auth-screen-email');
+    this.switchScreen('main-workspace', 'auth-screen-username');
+  }
+
+  async changePassword(oldPassword, newPassword) {
+    return await changePassword(oldPassword, newPassword, this.token);
+  }
+
+  lockSendButton() {
+    const submitBtn = document.querySelector('#form-username-step button[type="submit"]');
+    if (!submitBtn || this.sendButtonLocked) return;
+    this.sendButtonLocked = true;
+    const originalText = submitBtn.textContent;
+    let countdown = 60;
+    submitBtn.disabled = true;
+    submitBtn.textContent = `Подождите ${countdown}с...`;
+    const interval = setInterval(() => {
+      countdown--;
+      if (countdown <= 0) {
+        clearInterval(interval);
+        submitBtn.disabled = false;
+        submitBtn.textContent = originalText;
+        this.sendButtonLocked = false;
+      } else {
+        submitBtn.textContent = `Подождите ${countdown}с...`;
+      }
+    }, 1000);
+  }
+
+  lockResendButton() {
+    const btnResend = document.getElementById('btn-resend-code');
+    if (!btnResend || this.resendButtonLocked) return;
+    this.resendButtonLocked = true;
+    const originalText = btnResend.textContent;
+    let countdown = 60;
+    btnResend.disabled = true;
+    btnResend.textContent = `Подождите ${countdown}с...`;
+    const interval = setInterval(() => {
+      countdown--;
+      if (countdown <= 0) {
+        clearInterval(interval);
+        btnResend.disabled = false;
+        btnResend.textContent = originalText;
+        this.resendButtonLocked = false;
+      } else {
+        btnResend.textContent = `Подождите ${countdown}с...`;
+      }
+    }, 1000);
   }
 
   startRetryTimer() {
     const btnResend = document.getElementById('btn-resend-code');
     if (!btnResend) return;
-    
     this.retryCountdown = 30;
     btnResend.disabled = true;
     btnResend.textContent = `Отправить снова (${this.retryCountdown}с)`;
-
     if (this.retryTimer) clearInterval(this.retryTimer);
     this.retryTimer = setInterval(() => {
       this.retryCountdown--;
@@ -420,39 +383,44 @@ class AuthManager {
     }
   }
 
-  // =====================================
-  // ИНИЦИАЛИЗАЦИЯ СОБЫТИЙ
-  // =====================================
   initEvents() {
-    // Шаг 1: Почта
-    const formEmail = document.getElementById('form-email-step');
-    if (formEmail) {
-      formEmail.addEventListener('submit', async (e) => {
+    // Шаг 1: Ввод username
+    const formUsername = document.getElementById('form-username-step');
+    if (formUsername) {
+      formUsername.addEventListener('submit', async (e) => {
         e.preventDefault();
-        const emailInput = document.getElementById('input-email');
-        const emailVal = emailInput.value.trim();
-        const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
-        
-        if (emailVal === "") {
-          showCustomToast("Заполните поле: Адрес электронной почты", "error");
-          emailInput.focus();
+        if (this.sendButtonLocked) {
+          showCustomToast('Подождите 60 секунд перед повторной отправкой', 'warning');
           return;
         }
-        if (!emailRegex.test(emailVal)) {
-          showCustomToast("Введите корректный E-mail (пример: user@domain.com)", "error");
-          emailInput.focus();
+        const usernameInput = document.getElementById('input-username');
+        let username = usernameInput.value.trim().replace(/^@/, '');
+        if (username === "") {
+          showCustomToast("Введите ваш Telegram username", "error");
+          usernameInput.focus();
           return;
         }
-        
-        this.currentEmail = emailVal;
-        document.getElementById('target-email-label').textContent = emailVal;
-        
-        const success = await requestCode(emailVal);
+        if (username.length < 3) {
+          showCustomToast("Username должен быть не менее 3 символов", "error");
+          usernameInput.focus();
+          return;
+        }
+        this.currentUsername = username;
+        document.getElementById('target-username-label').textContent = `@${username}`;
+        this.lockSendButton();
+        const success = await requestCode(username);
         if (success) {
-          this.switchScreen('auth-screen-email', 'auth-screen-code');
+          this.switchScreen('auth-screen-username', 'auth-screen-code');
           this.isCodeRequested = true;
           this.startRetryTimer();
           showCustomToast('Код отправлен в Telegram', 'info');
+        } else {
+          this.sendButtonLocked = false;
+          const submitBtn = document.querySelector('#form-username-step button[type="submit"]');
+          if (submitBtn) {
+            submitBtn.disabled = false;
+            submitBtn.textContent = 'Получить код';
+          }
         }
       });
     }
@@ -460,12 +428,13 @@ class AuthManager {
     // Шаг 2: Код
     const codeScreen = document.getElementById('auth-screen-code');
     if (codeScreen) {
+      // Кнопка "Назад"
       const backBtn = document.createElement('button');
       backBtn.className = 'btn-glass-secondary';
-      backBtn.textContent = '⬅ Назад (изменить почту)';
+      backBtn.textContent = '⬅ Назад (изменить username)';
       backBtn.style.marginTop = '10px';
       backBtn.style.width = '100%';
-      backBtn.id = 'btn-back-to-email';
+      backBtn.id = 'btn-back-to-username';
       const card = codeScreen.querySelector('.auth-card');
       if (card) {
         const verifyBtn = document.getElementById('btn-verify-code');
@@ -475,15 +444,27 @@ class AuthManager {
           card.appendChild(backBtn);
         }
       }
-
       backBtn.addEventListener('click', () => {
-        this.switchScreen('auth-screen-code', 'auth-screen-email');
+        this.switchScreen('auth-screen-code', 'auth-screen-username');
         this.resetRetryTimer();
+        this.sendButtonLocked = false;
+        this.resendButtonLocked = false;
+        const submitBtn = document.querySelector('#form-username-step button[type="submit"]');
+        if (submitBtn) {
+          submitBtn.disabled = false;
+          submitBtn.textContent = 'Получить код';
+        }
+        const btnResend = document.getElementById('btn-resend-code');
+        if (btnResend) {
+          btnResend.disabled = false;
+          btnResend.textContent = '🔄 Отправить код снова';
+        }
         document.querySelectorAll('.code-digit').forEach(d => d.value = '');
         document.getElementById('btn-verify-code').disabled = false;
         document.getElementById('btn-verify-code').textContent = 'Войти';
       });
 
+      // Кнопка "Отправить код снова"
       const resendBtn = document.createElement('button');
       resendBtn.className = 'btn-glass-secondary';
       resendBtn.textContent = '🔄 Отправить код снова';
@@ -492,28 +473,37 @@ class AuthManager {
       resendBtn.id = 'btn-resend-code';
       resendBtn.disabled = true;
       if (card) {
-        const backBtnRef = document.getElementById('btn-back-to-email');
+        const backBtnRef = document.getElementById('btn-back-to-username');
         if (backBtnRef) {
           card.insertBefore(resendBtn, backBtnRef);
         } else {
           card.appendChild(resendBtn);
         }
       }
-
       resendBtn.addEventListener('click', async () => {
-        if (resendBtn.disabled) return;
-        const email = this.currentEmail || this.settings.settings.email || '';
-        if (!email) {
-          showCustomToast('Почта не найдена, вернитесь назад', 'error');
+        if (resendBtn.disabled || this.resendButtonLocked) {
+          if (this.resendButtonLocked) {
+            showCustomToast('Подождите 60 секунд перед повторной отправкой', 'warning');
+          }
           return;
         }
-        const success = await requestCode(email);
+        const username = this.currentUsername;
+        if (!username) {
+          showCustomToast('Username не найден, вернитесь назад', 'error');
+          return;
+        }
+        this.lockResendButton();
+        const success = await requestCode(username);
         if (success) {
           this.isCodeRequested = true;
           this.startRetryTimer();
           showCustomToast('Код отправлен повторно', 'info');
           document.querySelectorAll('.code-digit').forEach(d => d.value = '');
           document.getElementById('btn-verify-code').disabled = false;
+        } else {
+          this.resendButtonLocked = false;
+          resendBtn.disabled = false;
+          resendBtn.textContent = '🔄 Отправить код снова';
         }
       });
     }
@@ -533,10 +523,11 @@ class AuthManager {
       btnVerifyCode.addEventListener('click', async () => {
         let code = Array.from(digits).map(d => d.value).join('');
         if (code.length === 5) {
-          const email = this.currentEmail || this.settings.settings.email || '';
-          const isValid = await verifyCode(email, code);
+          const username = this.currentUsername;
+          const isValid = await verifyCode(username, code);
           if (isValid) {
             this.resetRetryTimer();
+            this.resendButtonLocked = false;
             this.switchScreen('auth-screen-code', 'auth-screen-profile');
           }
         } else {
@@ -568,46 +559,40 @@ class AuthManager {
       });
     }
 
-    const usernameInput = document.getElementById('input-username');
-    if (usernameInput) {
-      usernameInput.value = this.settings.settings.username || '@user';
-      usernameInput.addEventListener('input', (e) => {
-        let val = e.target.value;
-        if (val.length > 0 && !val.startsWith('@')) e.target.value = '@' + val.replace(/@/g, '');
-      });
+    const usernameDisplay = document.getElementById('display-username');
+    if (usernameDisplay) {
+      usernameDisplay.textContent = `@${this.currentUsername}`;
     }
 
     const btnFinishSetup = document.getElementById('btn-finish-setup');
     if (btnFinishSetup) {
       btnFinishSetup.addEventListener('click', async (e) => {
         e.preventDefault();
-        const email = this.currentEmail || this.settings.settings.email || '';
-        const username = usernameInput.value.trim();
+        const username = this.currentUsername;
         const password = document.getElementById('input-password').value;
 
-        if (username.length < 2) {
-          showCustomToast("Укажите корректный юзернейм (минимум 2 символа)", "error");
-          usernameInput.focus();
-          return;
-        }
         if (password.length === 0) {
           showCustomToast("Пожалуйста, задайте пароль для защиты", "error");
           document.getElementById('input-password').focus();
           return;
         }
+        if (password.length < 6) {
+          showCustomToast("Пароль должен быть не менее 6 символов", "error");
+          document.getElementById('input-password').focus();
+          return;
+        }
 
-        const loggedIn = await this.login(email, password);
+        const loggedIn = await this.login(username, password);
         if (!loggedIn) {
-          const registered = await this.register(email, password, username);
+          const registered = await this.register(username, password);
           if (registered) {
-            await this.login(email, password);
+            await this.login(username, password);
           } else {
             return;
           }
         }
 
         this.settings.updateUsername(username);
-        this.settings.updateEmail(email);
         document.getElementById('current-user-name').textContent = username;
 
         if (this.userAvatarPath) {
@@ -627,7 +612,7 @@ class AuthManager {
     }
 
     // =====================================
-    // УПРАВЛЕНИЕ НАСТРОЙКАМИ
+    // НАСТРОЙКИ
     // =====================================
     const btnMySettings = document.getElementById('btn-my-settings');
     const modalSettings = document.getElementById('modal-settings');
@@ -643,23 +628,20 @@ class AuthManager {
       btnCloseSettings.addEventListener('click', () => modalSettings.classList.remove('show'));
     }
 
+    // Сохранение профиля
     const btnSaveSettings = document.getElementById('btn-save-settings');
     if (btnSaveSettings) {
       btnSaveSettings.addEventListener('click', () => {
         const username = document.getElementById('settings-username').value.trim();
-        const email = document.getElementById('settings-email').value.trim();
         if (username) {
           this.settings.updateUsername(username);
           document.getElementById('current-user-name').textContent = username;
-        }
-        if (email) {
-          this.settings.updateEmail(email);
-          localStorage.setItem('syncline_current_email', email);
         }
         showCustomToast('Настройки профиля сохранены!', 'success');
       });
     }
 
+    // Применение стиля
     const btnApplyStyle = document.getElementById('btn-apply-style');
     if (btnApplyStyle) {
       btnApplyStyle.addEventListener('click', () => {
@@ -692,6 +674,7 @@ class AuthManager {
       document.querySelectorAll('.effect-toggle').forEach(btn => btn.classList.remove('active'));
     });
 
+    // Аватарка в настройках
     const avatarInput = document.getElementById('avatar-file-input');
     if (avatarInput) {
       avatarInput.addEventListener('change', (e) => {
@@ -750,6 +733,37 @@ class AuthManager {
       });
     }
 
+    // Смена пароля (подключаем кнопку)
+    const securityView = document.getElementById('view-security');
+    if (securityView) {
+      const changePassBtn = securityView.querySelector('.btn-glass-primary');
+      if (changePassBtn && changePassBtn.textContent.includes('Обновить пароль')) {
+        changePassBtn.addEventListener('click', async () => {
+          const inputs = securityView.querySelectorAll('input[type="password"]');
+          if (inputs.length < 2) {
+            showCustomToast('Поля для пароля не найдены', 'error');
+            return;
+          }
+          const oldPass = inputs[0].value;
+          const newPass = inputs[1].value;
+          if (!oldPass || !newPass) {
+            showCustomToast('Заполните оба поля', 'warning');
+            return;
+          }
+          if (newPass.length < 6) {
+            showCustomToast('Новый пароль должен быть не менее 6 символов', 'error');
+            return;
+          }
+          const success = await this.changePassword(oldPass, newPass);
+          if (success) {
+            inputs[0].value = '';
+            inputs[1].value = '';
+          }
+        });
+      }
+    }
+
+    // Завершение всех сессий
     document.querySelector('#view-security .btn-glass-secondary')?.addEventListener('click', () => {
       this.settings.settings.security.sessions = this.settings.settings.security.sessions.filter(s => s.isCurrent);
       this.settings.saveSettings();
@@ -757,41 +771,43 @@ class AuthManager {
       showCustomToast('Все сессии завершены, кроме текущей', 'success');
     });
 
-    const logoutBtn = document.createElement('button');
-    logoutBtn.className = 'btn-glass-secondary';
-    logoutBtn.style.marginTop = '20px';
-    logoutBtn.textContent = '🚪 Выйти из аккаунта';
-    logoutBtn.addEventListener('click', () => this.logout());
-    const securityView = document.getElementById('view-security');
-    if (securityView) {
-      const logoutContainer = document.createElement('div');
-      logoutContainer.style.borderTop = '1px solid var(--border-glass-light)';
-      logoutContainer.style.paddingTop = '20px';
-      logoutContainer.appendChild(logoutBtn);
-      securityView.appendChild(logoutContainer);
+    // Кнопка выхода (уже есть, проверим)
+    const existingLogoutBtn = securityView?.querySelector('.btn-glass-secondary:last-child');
+    if (existingLogoutBtn && existingLogoutBtn.textContent.includes('Выйти')) {
+      // уже есть, ничего не делаем
+    } else {
+      // добавляем, если нет
+      const logoutBtn = document.createElement('button');
+      logoutBtn.className = 'btn-glass-secondary';
+      logoutBtn.style.marginTop = '20px';
+      logoutBtn.textContent = '🚪 Выйти из аккаунта';
+      logoutBtn.addEventListener('click', () => this.logout());
+      if (securityView) {
+        const logoutContainer = document.createElement('div');
+        logoutContainer.style.borderTop = '1px solid var(--border-glass-light)';
+        logoutContainer.style.paddingTop = '20px';
+        logoutContainer.appendChild(logoutBtn);
+        securityView.appendChild(logoutContainer);
+      }
     }
   }
 
   // =====================================
-  // ВКЛАДКИ НАСТРОЕК
+  // ОСТАЛЬНЫЕ МЕТОДЫ (без изменений)
   // =====================================
   initSettingsTabs() {
     const tabs = document.querySelectorAll('.settings-tab-btn');
     const views = document.querySelectorAll('.settings-view');
-
     if (tabs.length === 0) return;
-
     tabs.forEach(t => t.classList.remove('active'));
     views.forEach(v => v.classList.remove('active'));
     tabs[0].classList.add('active');
     const firstView = document.getElementById(tabs[0].dataset.tab);
     if (firstView) firstView.classList.add('active');
-
     tabs.forEach(tab => {
       tab.addEventListener('click', () => {
         tabs.forEach(t => t.classList.remove('active'));
         views.forEach(v => v.classList.remove('active'));
-
         tab.classList.add('active');
         const targetView = document.getElementById(tab.dataset.tab);
         if (targetView) {
@@ -810,12 +826,10 @@ class AuthManager {
     if (!container) return;
     const blocked = this.settings.settings.blockedUsers || [];
     container.innerHTML = '';
-
     if (blocked.length === 0) {
       container.innerHTML = `<p style="color: var(--text-muted); font-size: 13px;">Список пуст. Вы никого не блокировали.</p>`;
       return;
     }
-
     blocked.forEach(username => {
       const item = document.createElement('div');
       item.className = 'macro-item';
@@ -842,12 +856,10 @@ class AuthManager {
     if (!container) return;
     const verified = this.settings.settings.verifiedUsers || [];
     container.innerHTML = '';
-
     if (verified.length === 0) {
       container.innerHTML = `<p style="color: var(--text-muted); font-size: 13px;">Нет верифицированных пользователей.</p>`;
       return;
     }
-
     verified.forEach(username => {
       const item = document.createElement('div');
       item.className = 'macro-item';
@@ -872,11 +884,9 @@ class AuthManager {
   loadSettingsIntoUI() {
     const s = this.settings.settings;
     document.getElementById('settings-username').value = s.username || '@user';
-    document.getElementById('settings-email').value = s.email || 'syncline@internet.ru';
     document.getElementById('settings-theme').value = s.theme || 'dark';
     document.getElementById('settings-blur').value = s.blurStrength || 80;
     document.getElementById('settings-display-username').textContent = s.username || '@user';
-
     if (s.avatarPath) {
       const ava = document.getElementById('settings-my-avatar');
       if (ava) {
@@ -884,7 +894,6 @@ class AuthManager {
         ava.style.backgroundSize = 'cover';
       }
     }
-
     const btn2FA = document.getElementById('btn-toggle-2fa');
     if (btn2FA) {
       const twoFA = s.security.twoFactor;
@@ -903,7 +912,6 @@ class AuthManager {
         }
       }
     }
-
     const sessionsList = document.getElementById('sessions-list');
     if (sessionsList) {
       sessionsList.innerHTML = '';
@@ -925,7 +933,6 @@ class AuthManager {
     const fill = document.getElementById('strength-fill');
     const text = document.getElementById('strength-text');
     if (!passInput || !fill || !text) return;
-
     passInput.addEventListener('input', () => {
       const val = passInput.value;
       let score = 0;
@@ -934,7 +941,6 @@ class AuthManager {
       if (/[A-Z]/.test(val)) score++;
       if (/[0-9]/.test(val)) score++;
       if (/[^A-Za-z0-9]/.test(val)) score++;
-
       if (val.length === 0) {
         fill.style.width = '0%';
         fill.style.backgroundColor = 'transparent';
@@ -988,7 +994,6 @@ class AuthManager {
     macroBtns.forEach((btn, index) => {
       if (index === 0) btn.textContent = macros.screenshot || 'Ctrl+Shift+S';
       if (index === 1) btn.textContent = macros.clearChat || 'Ctrl+Shift+E';
-
       btn.addEventListener('click', () => {
         btn.textContent = 'Нажмите комбинацию...';
         btn.style.borderColor = 'var(--accent-purple-bright)';
@@ -1025,15 +1030,12 @@ class AuthManager {
     const img = document.getElementById('crop-image');
     const overlay = document.getElementById('modal-crop');
     if (!zoomSlider || !img || !overlay) return;
-
     let isDragging = false;
     let startX, startY, imgX = 0, imgY = 0;
     let currentScale = 1;
-
     img.style.position = 'relative';
     img.style.left = '0px';
     img.style.top = '0px';
-
     img.addEventListener('mousedown', (e) => {
       isDragging = true;
       startX = e.clientX - parseInt(img.style.left || 0);
@@ -1051,18 +1053,15 @@ class AuthManager {
       img.style.left = imgX + 'px';
       img.style.top = imgY + 'px';
     });
-
     zoomSlider.addEventListener('input', (e) => {
       currentScale = e.target.value / 100;
       img.style.transform = `scale(${currentScale})`;
     });
-
     document.getElementById('btn-crop-cancel').addEventListener('click', () => {
       overlay.classList.remove('show');
       this.tempCropPath = null;
       if (this.cropCallback) this.cropCallback(null);
     });
-
     document.getElementById('btn-crop-save').addEventListener('click', () => {
       const result = this.tempCropPath;
       overlay.classList.remove('show');
