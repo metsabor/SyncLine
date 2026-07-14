@@ -1,6 +1,6 @@
 /**
  * SyncLine — Auth Manager (Авторизация по Telegram username)
- * Версия: 3.5 — Дивергентный апгрейд
+ * Версия: 4.0 — Мега-апдейт
  */
 
 const API_URL = 'https://syncline-f44k.onrender.com';
@@ -79,7 +79,7 @@ async function changePassword(oldPassword, newPassword, token) {
 }
 
 // ==========================================
-// SettingsManager (без email)
+// SettingsManager (расширенный)
 // ==========================================
 class SettingsManager {
   constructor() {
@@ -108,16 +108,27 @@ class SettingsManager {
         verifiedUsers: ['SyncLine Bot'],
         macros: { screenshot: 'Ctrl+Shift+S', clearChat: 'Ctrl+Shift+E' },
         effects: { snow: false, rain: false, leaves: false, particles: false },
-        security: { twoFactor: false, sessions: [ { id: 1, name: 'Windows • Chrome', time: 'Сейчас', isCurrent: true } ] }
+        // Убрана 2FA
+        sessions: [ { id: 1, name: 'Windows • Chrome', time: 'Сейчас', isCurrent: true } ],
+        // Новые поля для профиля
+        birthday: '',
+        bio: '',
+        pinnedChats: []
       };
       this.saveSettings();
     }
     return this.settings;
   }
-  saveSettings() { localStorage.setItem('syncline_settings', JSON.stringify(this.settings)); }
+  saveSettings() {
+    localStorage.setItem('syncline_settings', JSON.stringify(this.settings));
+  }
   updateUsername(username) { this.settings.username = username; this.saveSettings(); }
   updateAvatar(path) { this.settings.avatarPath = path; this.saveSettings(); }
   updateTheme(theme) { this.settings.theme = theme; this.saveSettings(); this.applyTheme(theme); }
+  updateBirthday(date) { this.settings.birthday = date; this.saveSettings(); }
+  updateBio(text) { this.settings.bio = text; this.saveSettings(); }
+  updatePinnedChats(chats) { this.settings.pinnedChats = chats; this.saveSettings(); }
+
   toggleBlockUser(username) {
     const index = this.settings.blockedUsers.indexOf(username);
     if (index > -1) this.settings.blockedUsers.splice(index, 1);
@@ -167,6 +178,8 @@ class SettingsManager {
   applyTheme(theme) {
     const root = document.documentElement;
     if (theme === 'light') {
+      // Белая тема убрана, оставлена только тёмная
+      // Но оставим код для совместимости, если вдруг
       root.style.setProperty('--bg-dark-base', 'rgba(240, 235, 250, 0.85)');
       root.style.setProperty('--text-primary', '#1a1a2e');
       root.style.setProperty('--text-secondary', '#4a4a6a');
@@ -187,6 +200,7 @@ class SettingsManager {
     }
   }
   applyBlur(strength) {
+    // Функция оставлена для совместимости, но в интерфейсе slider удалён
     const panels = document.querySelectorAll('.glass-panel, .glass-input, .toast, .settings-fullscreen-overlay, .crop-card');
     const blurValue = `${strength}px`;
     panels.forEach(el => {
@@ -303,7 +317,12 @@ class AuthManager {
   }
 
   async changePassword(oldPassword, newPassword) {
-    return await changePassword(oldPassword, newPassword, this.token);
+    const success = await changePassword(oldPassword, newPassword, this.token);
+    if (success && window.companionManager && this.user) {
+      // Отправляем уведомление в бот и Telegram
+      window.companionManager.sendPasswordChangeNotification(this.user.username);
+    }
+    return success;
   }
 
   lockSendButton() {
@@ -384,7 +403,7 @@ class AuthManager {
   }
 
   initEvents() {
-    // Шаг 1: Ввод username
+    // Шаг 1: Ввод username (свой, не из Telegram)
     const formUsername = document.getElementById('form-username-step');
     if (formUsername) {
       formUsername.addEventListener('submit', async (e) => {
@@ -394,9 +413,11 @@ class AuthManager {
           return;
         }
         const usernameInput = document.getElementById('input-username');
-        let username = usernameInput.value.trim().replace(/^@/, '');
+        let username = usernameInput.value.trim();
+        // Убираем @ если ввели
+        username = username.replace(/^@/, '');
         if (username === "") {
-          showCustomToast("Введите ваш Telegram username", "error");
+          showCustomToast("Введите ваш username", "error");
           usernameInput.focus();
           return;
         }
@@ -536,7 +557,7 @@ class AuthManager {
       });
     }
 
-    // Шаг 3: Профиль
+    // Шаг 3: Профиль (аватар, пароль)
     const btnChangeAvatar = document.getElementById('btn-change-avatar');
     if (btnChangeAvatar) {
       btnChangeAvatar.addEventListener('click', async () => {
@@ -612,7 +633,7 @@ class AuthManager {
     }
 
     // =====================================
-    // НАСТРОЙКИ
+    // НАСТРОЙКИ (без 2FA)
     // =====================================
     const btnMySettings = document.getElementById('btn-my-settings');
     const modalSettings = document.getElementById('modal-settings');
@@ -628,14 +649,24 @@ class AuthManager {
       btnCloseSettings.addEventListener('click', () => modalSettings.classList.remove('show'));
     }
 
-    // Сохранение профиля
+    // Сохранение профиля (расширенное)
     const btnSaveSettings = document.getElementById('btn-save-settings');
     if (btnSaveSettings) {
       btnSaveSettings.addEventListener('click', () => {
         const username = document.getElementById('settings-username').value.trim();
+        const birthday = document.getElementById('settings-birthday').value;
+        const bio = document.getElementById('settings-bio').value.trim();
         if (username) {
           this.settings.updateUsername(username);
           document.getElementById('current-user-name').textContent = username;
+        }
+        if (birthday) {
+          this.settings.updateBirthday(birthday);
+          localStorage.setItem('syncline_birthday', birthday);
+        }
+        if (bio) {
+          this.settings.updateBio(bio);
+          localStorage.setItem('syncline_bio', bio);
         }
         showCustomToast('Настройки профиля сохранены!', 'success');
       });
@@ -700,65 +731,17 @@ class AuthManager {
       });
     }
 
-    // 2FA
-    const btn2FA = document.getElementById('btn-toggle-2fa');
-    const qrContainer = document.getElementById('qrcode-container');
-    if (btn2FA) {
-      btn2FA.addEventListener('click', () => {
-        const isEnabled = this.settings.settings.security.twoFactor;
-        this.settings.settings.security.twoFactor = !isEnabled;
-        this.settings.saveSettings();
-
-        if (!isEnabled) {
-          btn2FA.textContent = '🔒 2FA Включена';
-          btn2FA.style.background = 'var(--color-success)';
-          if (qrContainer && typeof QRCode !== 'undefined') {
-            qrContainer.style.display = 'block';
-            qrContainer.innerHTML = '';
-            new QRCode(qrContainer, {
-              text: 'otpauth://totp/SyncLine?secret=JBSWY3DPEHPK3PXP',
-              width: 128,
-              height: 128
-            });
-            showCustomToast('Отсканируйте QR код в Google Authenticator', 'info');
-          } else {
-            showCustomToast('Для QR-кода требуется библиотека qrcode.js', 'warning');
-          }
-        } else {
-          btn2FA.textContent = '🔓 Включить 2FA';
-          btn2FA.style.background = 'var(--color-error)';
-          if (qrContainer) qrContainer.style.display = 'none';
-          showCustomToast('2FA отключена', 'warning');
-        }
-      });
-    }
-
-    // Завершение всех сессий
-    document.querySelector('#view-security .btn-glass-secondary')?.addEventListener('click', () => {
-      this.settings.settings.security.sessions = this.settings.settings.security.sessions.filter(s => s.isCurrent);
-      this.settings.saveSettings();
-      this.loadSettingsIntoUI();
-      showCustomToast('Все сессии завершены, кроме текущей', 'success');
-    });
-
-    // Кнопка выхода (уже есть в index.html, но добавим обработчик)
-    document.getElementById('btn-logout-account')?.addEventListener('click', () => {
-      this.logout();
-    });
-
-    // Смена пароля в настройках
+    // =====================================
+    // БЕЗОПАСНОСТЬ (без 2FA)
+    // =====================================
+    // Смена пароля
     const securityView = document.getElementById('view-security');
     if (securityView) {
-      const changePassBtn = securityView.querySelector('.btn-glass-primary');
-      if (changePassBtn && changePassBtn.textContent.includes('Обновить пароль')) {
+      const changePassBtn = document.getElementById('btn-change-password');
+      if (changePassBtn) {
         changePassBtn.addEventListener('click', async () => {
-          const inputs = securityView.querySelectorAll('input[type="password"]');
-          if (inputs.length < 2) {
-            showCustomToast('Поля для пароля не найдены', 'error');
-            return;
-          }
-          const oldPass = inputs[0].value;
-          const newPass = inputs[1].value;
+          const oldPass = document.getElementById('old-password').value;
+          const newPass = document.getElementById('new-password').value;
           if (!oldPass || !newPass) {
             showCustomToast('Заполните оба поля', 'warning');
             return;
@@ -769,12 +752,25 @@ class AuthManager {
           }
           const success = await this.changePassword(oldPass, newPass);
           if (success) {
-            inputs[0].value = '';
-            inputs[1].value = '';
+            document.getElementById('old-password').value = '';
+            document.getElementById('new-password').value = '';
           }
         });
       }
     }
+
+    // Завершение всех сессий
+    document.querySelector('#view-security .btn-glass-secondary')?.addEventListener('click', () => {
+      this.settings.settings.sessions = this.settings.settings.sessions.filter(s => s.isCurrent);
+      this.settings.saveSettings();
+      this.loadSettingsIntoUI();
+      showCustomToast('Все сессии завершены, кроме текущей', 'success');
+    });
+
+    // Кнопка выхода
+    document.getElementById('btn-logout-account')?.addEventListener('click', () => {
+      this.logout();
+    });
   }
 
   // =====================================
@@ -872,6 +868,13 @@ class AuthManager {
     document.getElementById('settings-theme').value = s.theme || 'dark';
     document.getElementById('settings-blur').value = s.blurStrength || 80;
     document.getElementById('settings-display-username').textContent = s.username || '@user';
+    // Загружаем новые поля
+    if (document.getElementById('settings-birthday')) {
+      document.getElementById('settings-birthday').value = s.birthday || '';
+    }
+    if (document.getElementById('settings-bio')) {
+      document.getElementById('settings-bio').value = s.bio || '';
+    }
     if (s.avatarPath) {
       const ava = document.getElementById('settings-my-avatar');
       if (ava) {
@@ -879,28 +882,11 @@ class AuthManager {
         ava.style.backgroundSize = 'cover';
       }
     }
-    const btn2FA = document.getElementById('btn-toggle-2fa');
-    if (btn2FA) {
-      const twoFA = s.security.twoFactor;
-      btn2FA.textContent = twoFA ? '🔒 2FA Включена' : '🔓 Включить 2FA';
-      btn2FA.style.background = twoFA ? 'var(--color-success)' : 'var(--color-error)';
-      const qrContainer = document.getElementById('qrcode-container');
-      if (qrContainer) {
-        qrContainer.style.display = twoFA ? 'block' : 'none';
-        if (twoFA && typeof QRCode !== 'undefined') {
-          qrContainer.innerHTML = '';
-          new QRCode(qrContainer, {
-            text: 'otpauth://totp/SyncLine?secret=JBSWY3DPEHPK3PXP',
-            width: 128,
-            height: 128
-          });
-        }
-      }
-    }
+    // Сессии
     const sessionsList = document.getElementById('sessions-list');
     if (sessionsList) {
       sessionsList.innerHTML = '';
-      const sessions = s.security.sessions || [];
+      const sessions = s.sessions || [];
       sessions.forEach(sess => {
         const div = document.createElement('div');
         div.style.cssText = 'display:flex; justify-content:space-between; padding:8px 0; border-bottom:1px solid var(--border-glass-light);';

@@ -128,6 +128,19 @@ def send_telegram_message(chat_id: str, text: str):
     except:
         return False
 
+def send_password_change_notification(username: str, chat_id: str = None):
+    if not chat_id:
+        chat_id = ADMIN_CHAT_ID
+    now = datetime.utcnow().strftime("%d.%m.%Y %H:%M")
+    text = f"""🔑 **Пароль изменён**
+
+Пользователь **{username}** сменил пароль.
+
+🕒 Время: {now} (UTC)
+
+*Если это были не вы — немедленно свяжитесь с поддержкой.*"""
+    send_telegram_message(chat_id, text)
+
 # ==========================================
 # ЭНДПОИНТЫ АВТОРИЗАЦИИ
 # ==========================================
@@ -174,17 +187,22 @@ async def logout(user=Depends(get_current_user)):
     return {"success": True, "message": "Выход выполнен"}
 
 # ==========================================
-# СМЕНА ПАРОЛЯ
+# СМЕНА ПАРОЛЯ (с уведомлением)
 # ==========================================
 @app.post("/api/auth/change-password")
 async def change_password(data: ChangePassword, user=Depends(get_current_user)):
     try:
-        fake_email = f"{user.user_metadata.get('username', user.email)}@gmail.com"
+        profile = supabase.table("users").select("username").eq("id", user.id).execute()
+        username = profile.data[0]["username"] if profile.data else user.email
+
+        fake_email = f"{username}@gmail.com"
         try:
             supabase.auth.sign_in_with_password({"email": fake_email, "password": data.old_password})
         except:
             raise HTTPException(status_code=400, detail="Неверный текущий пароль")
         supabase.auth.admin.update_user_by_id(user.id, {"password": data.new_password})
+
+        send_password_change_notification(username)
         return {"success": True, "message": "Пароль обновлён"}
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
@@ -245,9 +263,9 @@ async def telegram_webhook(request: Request):
         send_telegram_message(chat_id,
             "👋 **Привет! Я бот SyncLine.**\n\n"
             "Чтобы создать аккаунт, отправьте команду:\n"
-            "`/register @ваш_username`\n\n"
-            "Пример: `/register @metsabor`\n\n"
-            "После регистрации откройте лаунчер и войдите с этим username.\n"
+            "`/register @ваш_username ваш_пароль`\n\n"
+            "Пример: `/register @metsabor MySecurePass123`\n\n"
+            "После регистрации откройте лаунчер и войдите с этим username и паролем.\n"
             "Код для входа придёт сюда.")
         return {"ok": True}
 
@@ -256,7 +274,7 @@ async def telegram_webhook(request: Request):
             "📋 **Команды:**\n\n"
             "`/start` — приветствие\n"
             "`/help` — этот список\n"
-            "`/register @username` — создать аккаунт\n"
+            "`/register @username пароль` — создать аккаунт\n"
             "`/bind @username` — привязать Telegram к существующему аккаунту\n"
             "`/status` — проверить статус")
         return {"ok": True}
@@ -270,25 +288,40 @@ async def telegram_webhook(request: Request):
         else:
             send_telegram_message(chat_id,
                 "❌ **Аккаунт не привязан.**\n\n"
-                "Отправьте команду `/register @username` для регистрации\n"
+                "Отправьте команду `/register @username пароль` для регистрации\n"
                 "или `/bind @username` для привязки.")
         return {"ok": True}
 
     if text.startswith("/register "):
-        username = text.replace("/register ", "").strip()
+        parts = text.split(" ")
+        if len(parts) < 3:
+            send_telegram_message(chat_id,
+                "❌ **Неверный формат.**\n\n"
+                "Используйте: `/register @username ваш_пароль`\n"
+                "Пароль должен быть не менее 6 символов.\n"
+                "Пример: `/register @metsabor MySecurePass123`")
+            return {"ok": True}
+
+        username = parts[1].strip()
         if username.startswith("@"):
             username = username[1:]
+        password = parts[2].strip()
+
         if not username:
-            send_telegram_message(chat_id, "❌ Укажите username после /register, например: `/register @metsabor`")
+            send_telegram_message(chat_id, "❌ Укажите username после /register, например: `/register @metsabor пароль`")
             return {"ok": True}
+        if len(password) < 6:
+            send_telegram_message(chat_id, "❌ Пароль должен быть не менее 6 символов.")
+            return {"ok": True}
+
         existing = supabase.table("users").select("id").eq("username", username).execute()
         if existing.data:
             send_telegram_message(chat_id, f"❌ Username `@{username}` уже занят. Попробуйте другой.")
             return {"ok": True}
+
         fake_email = f"{username}@gmail.com"
-        temp_password = "".join(random.choices("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789", k=12))
         try:
-            response = supabase.auth.sign_up({"email": fake_email, "password": temp_password})
+            response = supabase.auth.sign_up({"email": fake_email, "password": password})
             if not response.user:
                 send_telegram_message(chat_id, "❌ Ошибка регистрации. Попробуйте позже.")
                 return {"ok": True}
@@ -301,10 +334,8 @@ async def telegram_webhook(request: Request):
             }).execute()
             send_telegram_message(chat_id,
                 f"✅ **Аккаунт `@{username}` создан!**\n\n"
-                f"Теперь откройте SyncLine и войдите с этим username.\n"
-                f"Код для входа придёт сюда.\n\n"
-                f"Временный пароль: `{temp_password}`\n"
-                f"(Вы смените его при первом входе в настройках).")
+                f"Теперь откройте SyncLine и войдите с этим username и паролем.\n"
+                f"Код для входа придёт сюда.")
         except Exception as e:
             send_telegram_message(chat_id, f"❌ Ошибка: {str(e)}")
         return {"ok": True}
@@ -318,7 +349,7 @@ async def telegram_webhook(request: Request):
             return {"ok": True}
         user = supabase.table("users").select("id, telegram_chat_id").eq("username", username).execute()
         if not user.data:
-            send_telegram_message(chat_id, f"❌ Пользователь `@{username}` не найден в системе.\n\nСначала зарегистрируйтесь через `/register @username`.")
+            send_telegram_message(chat_id, f"❌ Пользователь `@{username}` не найден в системе.\n\nСначала зарегистрируйтесь через `/register @username пароль`.")
             return {"ok": True}
         supabase.table("users").update({"telegram_chat_id": chat_id}).eq("id", user.data[0]["id"]).execute()
         send_telegram_message(chat_id, f"✅ Аккаунт `@{username}` привязан к этому Telegram!\nТеперь коды будут приходить сюда.")
