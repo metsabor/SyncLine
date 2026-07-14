@@ -197,7 +197,7 @@ class SettingsManager {
 }
 
 // ==========================================
-// ОСНОВНОЙ МЕНЕДЖЕР
+// ОСНОВНОЙ МЕНЕДЖЕР АВТОРИЗАЦИИ
 // ==========================================
 class AuthManager {
   constructor() {
@@ -733,7 +733,20 @@ class AuthManager {
       });
     }
 
-    // Смена пароля (подключаем кнопку)
+    // Завершение всех сессий
+    document.querySelector('#view-security .btn-glass-secondary')?.addEventListener('click', () => {
+      this.settings.settings.security.sessions = this.settings.settings.security.sessions.filter(s => s.isCurrent);
+      this.settings.saveSettings();
+      this.loadSettingsIntoUI();
+      showCustomToast('Все сессии завершены, кроме текущей', 'success');
+    });
+
+    // Кнопка выхода (уже есть в index.html, но добавим обработчик)
+    document.getElementById('btn-logout-account')?.addEventListener('click', () => {
+      this.logout();
+    });
+
+    // Смена пароля в настройках
     const securityView = document.getElementById('view-security');
     if (securityView) {
       const changePassBtn = securityView.querySelector('.btn-glass-primary');
@@ -762,38 +775,10 @@ class AuthManager {
         });
       }
     }
-
-    // Завершение всех сессий
-    document.querySelector('#view-security .btn-glass-secondary')?.addEventListener('click', () => {
-      this.settings.settings.security.sessions = this.settings.settings.security.sessions.filter(s => s.isCurrent);
-      this.settings.saveSettings();
-      this.loadSettingsIntoUI();
-      showCustomToast('Все сессии завершены, кроме текущей', 'success');
-    });
-
-    // Кнопка выхода (уже есть, проверим)
-    const existingLogoutBtn = securityView?.querySelector('.btn-glass-secondary:last-child');
-    if (existingLogoutBtn && existingLogoutBtn.textContent.includes('Выйти')) {
-      // уже есть, ничего не делаем
-    } else {
-      // добавляем, если нет
-      const logoutBtn = document.createElement('button');
-      logoutBtn.className = 'btn-glass-secondary';
-      logoutBtn.style.marginTop = '20px';
-      logoutBtn.textContent = '🚪 Выйти из аккаунта';
-      logoutBtn.addEventListener('click', () => this.logout());
-      if (securityView) {
-        const logoutContainer = document.createElement('div');
-        logoutContainer.style.borderTop = '1px solid var(--border-glass-light)';
-        logoutContainer.style.paddingTop = '20px';
-        logoutContainer.appendChild(logoutBtn);
-        securityView.appendChild(logoutContainer);
-      }
-    }
   }
 
   // =====================================
-  // ОСТАЛЬНЫЕ МЕТОДЫ (без изменений)
+  // ВКЛАДКИ НАСТРОЕК
   // =====================================
   initSettingsTabs() {
     const tabs = document.querySelectorAll('.settings-tab-btn');

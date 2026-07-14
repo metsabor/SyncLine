@@ -2,10 +2,11 @@ import os
 import uuid
 import random
 import requests
+import jwt
 from datetime import datetime, timedelta
-from fastapi import FastAPI, HTTPException, Depends, Header, Request
+from fastapi import FastAPI, HTTPException, Depends, Header, Request, UploadFile, File
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel
+from pydantic import BaseModel, EmailStr
 from typing import Optional, List
 from supabase_client import supabase
 from dotenv import load_dotenv
@@ -28,6 +29,13 @@ app.add_middleware(
 # ==========================================
 TELEGRAM_BOT_TOKEN = "8616052823:AAGDSIvPZG33rqPJ_37nS2AraCaLh2Pc9vM"
 ADMIN_CHAT_ID = "8560498548"
+
+# ==========================================
+# НАСТРОЙКИ LIVEKIT (ГОЛОС)
+# ==========================================
+LIVEKIT_URL = os.getenv("LIVEKIT_URL", "https://livekit-xxxx.onrender.com")  # замени после деплоя
+LIVEKIT_API_KEY = os.getenv("LIVEKIT_API_KEY", "your-api-key")
+LIVEKIT_API_SECRET = os.getenv("LIVEKIT_API_SECRET", "your-api-secret")
 
 # ==========================================
 # МОДЕЛИ ДАННЫХ
@@ -63,6 +71,20 @@ class VerifyCodeRequest(BaseModel):
 class TelegramRegisterRequest(BaseModel):
     username: str
     chat_id: str
+
+# ==========================================
+# МОДЕЛИ ДЛЯ КАНАЛОВ/ГРУПП
+# ==========================================
+class ChannelCreate(BaseModel):
+    name: str
+    username: Optional[str] = None
+    type: str  # 'channel' или 'group'
+    is_private: bool = False
+    participants: List[str] = []
+
+class ChannelMember(BaseModel):
+    channel_id: str
+    username: str
 
 # ==========================================
 # ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ
@@ -156,14 +178,11 @@ async def logout(user=Depends(get_current_user)):
 @app.post("/api/auth/change-password")
 async def change_password(data: ChangePassword, user=Depends(get_current_user)):
     try:
-        # Проверяем старый пароль через попытку входа с текущим пользователем
         fake_email = f"{user.user_metadata.get('username', user.email)}@syncline.local"
-        # Сначала проверяем старый пароль (через повторный вход)
         try:
             supabase.auth.sign_in_with_password({"email": fake_email, "password": data.old_password})
         except:
             raise HTTPException(status_code=400, detail="Неверный текущий пароль")
-        # Обновляем пароль
         supabase.auth.admin.update_user_by_id(user.id, {"password": data.new_password})
         return {"success": True, "message": "Пароль обновлён"}
     except Exception as e:
@@ -206,7 +225,7 @@ async def verify_code(request: VerifyCodeRequest):
     return {"success": True, "message": "Код подтверждён"}
 
 # ==========================================
-# TELEGRAM WEBHOOK (с /register)
+# TELEGRAM WEBHOOK (с /register и /bind)
 # ==========================================
 @app.post("/api/bot/webhook")
 async def telegram_webhook(request: Request):
@@ -265,12 +284,10 @@ async def telegram_webhook(request: Request):
         if not username:
             send_telegram_message(chat_id, "❌ Укажите username после /register, например: `/register @metsabor`")
             return {"ok": True}
-        # Проверяем, не занят ли
         existing = supabase.table("users").select("id").eq("username", username).execute()
         if existing.data:
             send_telegram_message(chat_id, f"❌ Username `@{username}` уже занят. Попробуйте другой.")
             return {"ok": True}
-        # Создаём пользователя
         fake_email = f"{username}@syncline.local"
         temp_password = "".join(random.choices("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789", k=12))
         try:
@@ -294,7 +311,7 @@ async def telegram_webhook(request: Request):
             send_telegram_message(chat_id, f"❌ Ошибка: {str(e)}")
         return {"ok": True}
 
-    # /bind @username (существующий аккаунт)
+    # /bind @username
     if text.startswith("/bind "):
         username = text.replace("/bind ", "").strip()
         if username.startswith("@"):
@@ -310,12 +327,85 @@ async def telegram_webhook(request: Request):
         send_telegram_message(chat_id, f"✅ Аккаунт `@{username}` привязан к этому Telegram!\nТеперь коды будут приходить сюда.")
         return {"ok": True}
 
-    # Неизвестная команда
     send_telegram_message(chat_id, "❓ Неизвестная команда. Введите /help для списка.")
     return {"ok": True}
 
 # ==========================================
-# ОСТАЛЬНЫЕ ЭНДПОИНТЫ (чаты, сообщения)
+# ЭНДПОИНТЫ ДЛЯ КАНАЛОВ/ГРУПП
+# ==========================================
+@app.post("/api/channels")
+async def create_channel(channel: ChannelCreate, user=Depends(get_current_user)):
+    try:
+        if channel.username:
+            existing = supabase.table("channels").select("id").eq("username", channel.username).execute()
+            if existing.data:
+                raise HTTPException(status_code=400, detail="Username already taken")
+        new_channel = supabase.table("channels").insert({
+            "name": channel.name,
+            "username": channel.username or channel.name,
+            "type": channel.type,
+            "is_private": channel.is_private,
+            "created_by": user.id,
+            "created_at": datetime.utcnow().isoformat()
+        }).execute()
+        channel_id = new_channel.data[0]["id"]
+        supabase.table("channel_members").insert({
+            "channel_id": channel_id,
+            "user_id": user.id,
+            "role": "admin"
+        }).execute()
+        for username in channel.participants:
+            user_data = supabase.table("users").select("id").eq("username", username).execute()
+            if user_data.data:
+                supabase.table("channel_members").insert({
+                    "channel_id": channel_id,
+                    "user_id": user_data.data[0]["id"],
+                    "role": "member"
+                }).execute()
+        return {"success": True, "channel_id": channel_id}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/api/channels")
+async def get_channels(user=Depends(get_current_user)):
+    try:
+        channels = supabase.table("channels").select("*").execute()
+        return {"channels": channels.data}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/api/channels/{channel_id}/members")
+async def get_channel_members(channel_id: str, user=Depends(get_current_user)):
+    try:
+        members = supabase.table("channel_members") \
+            .select("user_id, role, users!inner(username)") \
+            .eq("channel_id", channel_id) \
+            .execute()
+        return {"members": members.data}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/api/channels/{channel_id}/join")
+async def join_channel(channel_id: str, user=Depends(get_current_user)):
+    try:
+        existing = supabase.table("channel_members") \
+            .select("id") \
+            .eq("channel_id", channel_id) \
+            .eq("user_id", user.id) \
+            .execute()
+        if existing.data:
+            raise HTTPException(status_code=400, detail="Already a member")
+        supabase.table("channel_members").insert({
+            "channel_id": channel_id,
+            "user_id": user.id,
+            "role": "member"
+        }).execute()
+        return {"success": True}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+# ==========================================
+# ЭНДПОИНТЫ ДЛЯ СООБЩЕНИЙ (ЧАТЫ)
 # ==========================================
 @app.get("/api/chats")
 async def get_chats(user=Depends(get_current_user)):
@@ -395,6 +485,31 @@ async def update_status(status: str, user=Depends(get_current_user)):
     try:
         supabase.table("users").update({"status": status, "last_seen": datetime.utcnow().isoformat()}).eq("id", user.id).execute()
         return {"success": True}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+# ==========================================
+# ЭНДПОИНТЫ ДЛЯ ГОЛОСОВЫХ ТОКЕНОВ (LIVEKIT)
+# ==========================================
+@app.post("/api/voice/token")
+async def get_voice_token(room: str, user=Depends(get_current_user)):
+    try:
+        profile = supabase.table("users").select("username").eq("id", user.id).execute()
+        username = profile.data[0]["username"] if profile.data else user.id
+        token = jwt.encode({
+            "exp": datetime.utcnow() + timedelta(hours=24),
+            "iss": LIVEKIT_API_KEY,
+            "nbf": datetime.utcnow(),
+            "sub": user.id,
+            "video": {
+                "room": room,
+                "identity": username,
+                "roomJoin": True,
+                "canPublish": True,
+                "canSubscribe": True,
+            },
+        }, LIVEKIT_API_SECRET, algorithm="HS256")
+        return {"token": token, "url": LIVEKIT_URL}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 

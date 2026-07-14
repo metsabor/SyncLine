@@ -5,7 +5,10 @@
   "main": "main.js",
   "scripts": {
     "start": "electron .",
-    "build": "electron-builder"
+    "build": "electron-builder",
+    "build:win": "electron-builder --win --x64",
+    "build:mac": "electron-builder --mac --x64",
+    "build:linux": "electron-builder --linux --x64"
   },
   "keywords": [
     "syncline",
@@ -20,5 +23,7 @@
     "electron": "^28.2.0",
     "electron-builder": "^24.9.0"
   },
-  "dependencies": {}
+  "dependencies": {
+    "livekit-client": "^2.0.0"
+  }
 }

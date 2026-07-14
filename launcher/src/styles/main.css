@@ -17,7 +17,6 @@
   --color-error: #ff4757;
   --color-success: #2ed573;
   --color-warning: #ffa502;
-  --color-system-msg: rgba(255, 255, 255, 0.15);
   --border-glass-light: rgba(255, 255, 255, 0.12);
   --border-glass-purple: rgba(138, 43, 226, 0.35);
   --shadow-glass: 0 16px 40px 0 rgba(0, 0, 0, 0.5);
@@ -59,7 +58,104 @@ body, html {
 }
 
 /* ========================================== */
-/*   КАСТОМНЫЙ TITLEBAR (Заголовок окна)      */
+/*   СВЕТЛАЯ ТЕМА (ПОЛНОСТЬЮ ПЕРЕРАБОТАНА)    */
+/* ========================================== */
+body.light-theme #app-root {
+  background: radial-gradient(circle at 20% 20%, rgba(230, 220, 250, 0.6) 0%, transparent 40%),
+              radial-gradient(circle at 80% 80%, rgba(200, 190, 230, 0.5) 0%, transparent 45%),
+              #f5f2fa;
+  border-color: rgba(0, 0, 0, 0.08);
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.08);
+}
+
+body.light-theme {
+  --bg-dark-base: rgba(245, 242, 250, 0.92);
+  --bg-glass-card: rgba(255, 255, 255, 0.65);
+  --bg-glass-input: rgba(255, 255, 255, 0.8);
+  --bg-glass-hover: rgba(138, 43, 226, 0.08);
+  --text-primary: #1a1a2e;
+  --text-secondary: #4a4a6a;
+  --text-muted: #7a7a9a;
+  --border-glass-light: rgba(0, 0, 0, 0.08);
+  --shadow-glass: 0 16px 40px 0 rgba(0, 0, 0, 0.06);
+  --accent-purple-glow: rgba(138, 43, 226, 0.15);
+}
+
+body.light-theme .glass-panel {
+  background: var(--bg-glass-card) !important;
+  backdrop-filter: blur(20px) saturate(180%);
+  border-color: rgba(0, 0, 0, 0.06);
+}
+
+body.light-theme .glass-input {
+  background: var(--bg-glass-input);
+  border-color: rgba(0, 0, 0, 0.08);
+  color: var(--text-primary);
+}
+
+body.light-theme .glass-input:focus {
+  border-color: var(--accent-purple-primary);
+  box-shadow: 0 0 12px var(--accent-purple-glow);
+}
+
+body.light-theme .chat-item {
+  background: rgba(255, 255, 255, 0.4);
+}
+
+body.light-theme .chat-item:hover {
+  background: rgba(138, 43, 226, 0.06);
+}
+
+body.light-theme .chat-item.active {
+  background: rgba(138, 43, 226, 0.12);
+  border-color: rgba(138, 43, 226, 0.2);
+}
+
+body.light-theme .message-bubble.incoming {
+  background: rgba(230, 225, 240, 0.6);
+  border-color: rgba(0, 0, 0, 0.04);
+  color: var(--text-primary);
+}
+
+body.light-theme .message-bubble.outgoing {
+  background: var(--gradient-purple);
+  color: #ffffff;
+}
+
+body.light-theme .server-sidebar {
+  background: rgba(240, 235, 250, 0.7);
+  border-color: rgba(0, 0, 0, 0.06);
+}
+
+body.light-theme .server-icon {
+  background: rgba(255, 255, 255, 0.5);
+  border-color: rgba(0, 0, 0, 0.04);
+  color: var(--text-primary);
+}
+
+body.light-theme .server-icon:hover {
+  background: var(--accent-purple-primary);
+  color: white;
+}
+
+body.light-theme .server-icon.active {
+  background: var(--gradient-purple);
+  color: white;
+}
+
+body.light-theme .music-player-widget {
+  background: rgba(255, 255, 255, 0.5);
+  border-color: rgba(0, 0, 0, 0.06);
+}
+
+body.light-theme .toast {
+  background: rgba(255, 255, 255, 0.9);
+  color: var(--text-primary);
+  border-color: rgba(0, 0, 0, 0.06);
+}
+
+/* ========================================== */
+/*   КАСТОМНЫЙ TITLEBAR                      */
 /* ========================================== */
 .window-titlebar {
   height: 40px;
@@ -75,6 +171,11 @@ body, html {
   z-index: 9999;
 }
 
+body.light-theme .window-titlebar {
+  background: rgba(240, 235, 250, 0.6);
+  border-color: rgba(0, 0, 0, 0.06);
+}
+
 .titlebar-brand {
   display: flex;
   align-items: center;
@@ -83,12 +184,6 @@ body, html {
   font-weight: 700;
   color: var(--text-primary);
   letter-spacing: 0.5px;
-}
-
-.titlebar-brand img {
-  width: 20px;
-  height: 20px;
-  filter: drop-shadow(0 0 5px var(--accent-purple-glow));
 }
 
 .titlebar-controls {
@@ -214,16 +309,93 @@ body, html {
 .strength-text { font-size: 11px; color: var(--text-muted); margin-top: 4px; display: block; }
 
 /* ========================================== */
-/*   СЕРВЕРА В СТИЛЕ DISCORD                  */
+/*   ЛЕВАЯ ПАНЕЛЬ (КАНАЛЫ/ГРУППЫ)            */
 /* ========================================== */
-.server-sidebar { width: 76px; background: rgba(10, 7, 18, 0.85); border-right: 1px solid var(--border-glass-light); display: flex; flex-direction: column; align-items: center; padding: 14px 0; gap: 12px; overflow-y: auto; overflow-x: hidden; }
-.server-icon { width: 48px; height: 48px; background: rgba(255, 255, 255, 0.04); border-radius: 50%; display: flex; align-items: center; justify-content: center; color: var(--text-primary); font-size: 18px; font-weight: 600; cursor: pointer; transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); position: relative; border: 1px solid rgba(255, 255, 255, 0.05); }
-.server-icon:hover { border-radius: 14px; background: var(--accent-purple-primary); color: white; box-shadow: 0 0 15px var(--accent-purple-glow); }
-.server-icon.active { border-radius: 14px; background: var(--gradient-purple); box-shadow: 0 0 20px var(--accent-purple-glow); border-color: var(--accent-purple-bright); }
-.server-icon.active::before { content: ''; position: absolute; left: -14px; top: 14px; width: 4px; height: 20px; background: white; border-radius: 0 4px 4px 0; }
-.server-icon.add-server { color: var(--color-success); }
-.server-icon.add-server:hover { background: var(--color-success); color: white; box-shadow: 0 0 15px rgba(46, 213, 115, 0.4); }
-.server-separator { width: 36px; height: 2px; background: rgba(255, 255, 255, 0.1); border-radius: var(--radius-full); }
+.server-sidebar {
+  width: 76px;
+  background: rgba(10, 7, 18, 0.85);
+  border-right: 1px solid var(--border-glass-light);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 14px 0;
+  gap: 12px;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+.server-icon {
+  width: 48px;
+  height: 48px;
+  background: rgba(255, 255, 255, 0.04);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-primary);
+  font-size: 18px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  text-decoration: none;
+}
+
+.server-icon:hover {
+  border-radius: 14px;
+  background: var(--accent-purple-primary);
+  color: white;
+  box-shadow: 0 0 15px var(--accent-purple-glow);
+}
+
+.server-icon.active {
+  border-radius: 14px;
+  background: var(--gradient-purple);
+  box-shadow: 0 0 20px var(--accent-purple-glow);
+  border-color: var(--accent-purple-bright);
+}
+
+.server-icon.active::before {
+  content: '';
+  position: absolute;
+  left: -14px;
+  top: 14px;
+  width: 4px;
+  height: 20px;
+  background: white;
+  border-radius: 0 4px 4px 0;
+}
+
+.server-icon.add-server {
+  color: var(--color-success);
+  font-size: 24px;
+  font-weight: 300;
+}
+
+.server-icon.add-server:hover {
+  background: var(--color-success);
+  color: white;
+  box-shadow: 0 0 15px rgba(46, 213, 115, 0.4);
+}
+
+.server-separator {
+  width: 36px;
+  height: 2px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: var(--radius-full);
+}
+
+/* Иконки для каналов и групп */
+.server-icon.channel::before {
+  content: '#';
+  font-weight: 700;
+}
+
+.server-icon.group::before {
+  content: '👥';
+  font-size: 16px;
+}
 
 /* ========================================== */
 /*   РАБОЧЕЕ ПРОСТРАНСТВО МЕССЕНДЖЕРА        */
@@ -243,7 +415,7 @@ body, html {
 .search-box input { padding-left: 36px; }
 .search-icon { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: var(--text-muted); font-size: 14px; }
 
-/* СПИСОК ЧАТОВ */
+/* СПИСОК ЧАТОВ/КАНАЛОВ */
 .chat-list {
   flex: 1;
   overflow-y: auto;
@@ -315,7 +487,7 @@ body, html {
 .chat-input-area { padding: 16px 20px; border-top: 1px solid var(--border-glass-light); display: flex; align-items: center; gap: 12px; background: rgba(16, 11, 28, 0.5); }
 
 /* ========================================== */
-/*   МУЗЫКАЛЬНЫЙ ПЛЕЕР (SyncLine Music)       */
+/*   МУЗЫКАЛЬНЫЙ ПЛЕЕР                       */
 /* ========================================== */
 .music-player-widget {
   background: rgba(15, 10, 25, 0.6);
@@ -399,18 +571,9 @@ body, html {
   transition: var(--transition-fast);
   padding: 4px 6px;
 }
-.player-btn:hover {
-  color: var(--text-primary);
-}
-.player-btn.play-pause {
-  font-size: 22px;
-  color: var(--accent-purple-bright);
-}
-.player-btn.play-pause:hover {
-  color: white;
-  transform: scale(1.1);
-  filter: drop-shadow(0 0 5px var(--accent-purple-glow));
-}
+.player-btn:hover { color: var(--text-primary); }
+.player-btn.play-pause { font-size: 22px; color: var(--accent-purple-bright); }
+.player-btn.play-pause:hover { color: white; transform: scale(1.1); filter: drop-shadow(0 0 5px var(--accent-purple-glow)); }
 
 /* ========================================== */
 /*   ПОЛНОЭКРАННЫЕ НАСТРОЙКИ                  */
@@ -430,10 +593,7 @@ body, html {
   pointer-events: none;
   transition: opacity 0.3s cubic-bezier(0.25, 1, 0.5, 1);
 }
-.settings-fullscreen-overlay.show {
-  opacity: 1;
-  pointer-events: auto;
-}
+.settings-fullscreen-overlay.show { opacity: 1; pointer-events: auto; }
 .settings-navigation {
   width: 260px;
   background: rgba(10, 7, 18, 0.5);
@@ -467,10 +627,7 @@ body, html {
   align-items: center;
   gap: 12px;
 }
-.settings-tab-btn:hover {
-  background: rgba(255, 255, 255, 0.05);
-  color: white;
-}
+.settings-tab-btn:hover { background: rgba(255, 255, 255, 0.05); color: white; }
 .settings-tab-btn.active {
   background: rgba(138, 43, 226, 0.25);
   color: var(--accent-purple-bright);
@@ -483,16 +640,8 @@ body, html {
   overflow-y: auto;
   position: relative;
 }
-.settings-view {
-  display: none;
-  max-width: 680px;
-  flex-direction: column;
-  gap: 28px;
-}
-.settings-view.active {
-  display: flex;
-  animation: fadeInScale 0.3s forwards;
-}
+.settings-view { display: none; max-width: 680px; flex-direction: column; gap: 28px; }
+.settings-view.active { display: flex; animation: fadeInScale 0.3s forwards; }
 .settings-section-title {
   font-size: 22px;
   font-weight: 700;
@@ -540,20 +689,9 @@ body, html {
   cursor: pointer;
   transition: var(--transition-fast);
 }
-.profile-large-avatar-wrapper:hover .change-avatar-overlay {
-  opacity: 1;
-}
-.setting-control-item {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  text-align: left;
-}
-.setting-control-item label {
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--text-secondary);
-}
+.profile-large-avatar-wrapper:hover .change-avatar-overlay { opacity: 1; }
+.setting-control-item { display: flex; flex-direction: column; gap: 8px; text-align: left; }
+.setting-control-item label { font-size: 13px; font-weight: 600; color: var(--text-secondary); }
 .btn-close-settings-fullscreen {
   position: absolute;
   top: 40px;
@@ -572,11 +710,7 @@ body, html {
   transition: var(--transition-fast);
   z-index: 10;
 }
-.btn-close-settings-fullscreen:hover {
-  background: var(--color-error);
-  color: white;
-  transform: rotate(90deg);
-}
+.btn-close-settings-fullscreen:hover { background: var(--color-error); color: white; transform: rotate(90deg); }
 
 /* ========================================== */
 /*   TELEGRAM-STYLE CROP MODAL                */
@@ -597,10 +731,7 @@ body, html {
   pointer-events: none;
   transition: opacity 0.25s ease;
 }
-.crop-modal-overlay.show {
-  opacity: 1;
-  pointer-events: auto;
-}
+.crop-modal-overlay.show { opacity: 1; pointer-events: auto; }
 .crop-card {
   width: 400px;
   background: rgba(25, 18, 40, 0.95);
@@ -659,14 +790,8 @@ body, html {
   cursor: pointer;
   box-shadow: 0 0 8px var(--accent-purple-glow);
 }
-.crop-action-buttons {
-  display: flex;
-  justify-content: space-between;
-  gap: 12px;
-}
-.crop-action-buttons button {
-  flex: 1;
-}
+.crop-action-buttons { display: flex; justify-content: space-between; gap: 12px; }
+.crop-action-buttons button { flex: 1; }
 
 /* ========================================== */
 /*   КАСТОМНЫЕ СТИЛЬНЫЕ ТОСТЫ                 */
@@ -695,24 +820,11 @@ body, html {
   transform: translateX(150%);
   transition: transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.2);
 }
-.toast.show {
-  transform: translateX(0);
-}
-.toast.error {
-  border-left: 4px solid var(--color-error);
-  border-color: rgba(255, 71, 87, 0.3) rgba(255, 255, 255, 0.12) rgba(255, 255, 255, 0.12) rgba(255, 71, 87, 0.3);
-}
-.toast.success {
-  border-left: 4px solid var(--color-success);
-  border-color: rgba(46, 213, 115, 0.3) rgba(255, 255, 255, 0.12) rgba(255, 255, 255, 0.12) rgba(46, 213, 115, 0.3);
-}
-.toast.warning {
-  border-left: 4px solid var(--color-warning);
-  border-color: rgba(255, 165, 0, 0.3) rgba(255, 255, 255, 0.12) rgba(255, 255, 255, 0.12) rgba(255, 165, 0, 0.3);
-}
-.toast i {
-  font-size: 16px;
-}
+.toast.show { transform: translateX(0); }
+.toast.error { border-left: 4px solid var(--color-error); border-color: rgba(255, 71, 87, 0.3) rgba(255, 255, 255, 0.12) rgba(255, 255, 255, 0.12) rgba(255, 71, 87, 0.3); }
+.toast.success { border-left: 4px solid var(--color-success); border-color: rgba(46, 213, 115, 0.3) rgba(255, 255, 255, 0.12) rgba(255, 255, 255, 0.12) rgba(46, 213, 115, 0.3); }
+.toast.warning { border-left: 4px solid var(--color-warning); border-color: rgba(255, 165, 0, 0.3) rgba(255, 255, 255, 0.12) rgba(255, 255, 255, 0.12) rgba(255, 165, 0, 0.3); }
+.toast i { font-size: 16px; }
 .toast.error i { color: var(--color-error); }
 .toast.success i { color: var(--color-success); }
 .toast.warning i { color: var(--color-warning); }
@@ -721,55 +833,15 @@ body, html {
   from { opacity: 0; transform: scale(0.97) translateY(8px); }
   to { opacity: 1; transform: scale(1) translateY(0); }
 }
-::-webkit-scrollbar {
-  width: 5px;
-}
-::-webkit-scrollbar-track {
-  background: transparent;
-}
-::-webkit-scrollbar-thumb {
-  background: rgba(138, 43, 226, 0.25);
-  border-radius: 10px;
-}
-::-webkit-scrollbar-thumb:hover {
-  background: var(--accent-purple-bright);
-}
+::-webkit-scrollbar { width: 5px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: rgba(138, 43, 226, 0.25); border-radius: 10px; }
+::-webkit-scrollbar-thumb:hover { background: var(--accent-purple-bright); }
 
 /* ========================================== */
 /*   КОНТЕКСТНОЕ МЕНЮ                         */
 /* ========================================== */
-#chat-context-menu {
-  background: var(--bg-glass-card);
-  backdrop-filter: blur(20px);
-  border: 1px solid var(--border-glass-light);
-  border-radius: var(--radius-sm);
-  box-shadow: var(--shadow-glass);
-  padding: 6px;
-  min-width: 180px;
-}
-#chat-context-menu .context-btn {
-  background: transparent;
-  border: none;
-  color: var(--text-primary);
-  padding: 8px 14px;
-  text-align: left;
-  cursor: pointer;
-  border-radius: var(--radius-sm);
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  font-size: 13px;
-  transition: var(--transition-fast);
-  width: 100%;
-}
-#chat-context-menu .context-btn:hover {
-  background: var(--bg-glass-hover);
-}
-#chat-context-menu .context-btn i {
-  width: 18px;
-}
-
-#message-context-menu {
+#chat-context-menu, #message-context-menu {
   background: var(--bg-glass-card);
   backdrop-filter: blur(20px);
   border: 1px solid var(--border-glass-light);
@@ -778,7 +850,7 @@ body, html {
   padding: 6px;
   min-width: 160px;
 }
-#message-context-menu .context-btn {
+.context-btn {
   background: transparent;
   border: none;
   color: var(--text-primary);
@@ -793,28 +865,8 @@ body, html {
   transition: var(--transition-fast);
   width: 100%;
 }
-#message-context-menu .context-btn:hover {
-  background: var(--bg-glass-hover);
-}
-#message-context-menu .context-btn i {
-  width: 18px;
-}
-
-.msg-reply-box {
-  border-left: 3px solid var(--accent-purple-bright);
-  padding-left: 8px;
-  margin-bottom: 6px;
-  font-size: 12px;
-  opacity: 0.8;
-  color: var(--text-secondary);
-  display: flex;
-  align-items: center;
-  gap: 6px;
-}
-.msg-reply-box i {
-  font-size: 10px;
-  color: var(--accent-purple-bright);
-}
+.context-btn:hover { background: var(--bg-glass-hover); }
+.context-btn i { width: 18px; }
 
 /* ========================================== */
 /*   ВИЗУАЛЬНЫЕ ЭФФЕКТЫ                       */
@@ -829,7 +881,6 @@ body, html {
   z-index: 8000;
   overflow: hidden;
 }
-
 .effect-particle {
   position: absolute;
   top: -50px;
@@ -843,17 +894,14 @@ body, html {
   0% { transform: translateY(-50px) translateX(0) rotate(0deg); opacity: 0.8; }
   100% { transform: translateY(110vh) translateX(50px) rotate(360deg); opacity: 0.2; }
 }
-
 @keyframes fallRain {
   0% { transform: translateY(-50px) translateX(0); opacity: 0.6; }
   100% { transform: translateY(110vh) translateX(10px); opacity: 0; }
 }
-
 @keyframes fallLeaves {
   0% { transform: translateY(-50px) translateX(0) rotate(0deg); opacity: 0.9; }
   100% { transform: translateY(110vh) translateX(-80px) rotate(720deg); opacity: 0; }
 }
-
 @keyframes floatParticles {
   0% { transform: translateY(110vh) scale(0); opacity: 0; }
   50% { opacity: 0.8; }
@@ -876,12 +924,7 @@ body, html {
   transition: var(--transition-fast);
   font-size: 13px;
 }
-
-.one-time-media-btn:hover {
-  background: var(--color-error);
-  box-shadow: 0 0 20px rgba(255, 71, 87, 0.4);
-}
-
+.one-time-media-btn:hover { background: var(--color-error); box-shadow: 0 0 20px rgba(255, 71, 87, 0.4); }
 .burned-media {
   background: rgba(0, 0, 0, 0.3);
   border: 1px dashed var(--text-muted);
@@ -893,14 +936,10 @@ body, html {
   gap: 8px;
   font-size: 12px;
 }
-
-.burned-media i {
-  color: var(--color-error);
-  font-size: 16px;
-}
+.burned-media i { color: var(--color-error); font-size: 16px; }
 
 /* ========================================== */
-/*   ПРЕДПРОСМОТР ФАЙЛА ПЕРЕД ОТПРАВКОЙ       */
+/*   ПРЕДПРОСМОТР ФАЙЛА                       */
 /* ========================================== */
 #file-preview-area {
   background: rgba(0, 0, 0, 0.3);
@@ -908,22 +947,9 @@ body, html {
   padding: 10px;
   display: none;
 }
-
-#file-preview-area .file-preview-content {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
-
-#file-preview-area .file-info {
-  flex: 1;
-}
-
-#file-preview-area .file-name {
-  color: var(--text-primary);
-  font-weight: 500;
-}
-
+#file-preview-area .file-preview-content { display: flex; align-items: center; gap: 12px; }
+#file-preview-area .file-info { flex: 1; }
+#file-preview-area .file-name { color: var(--text-primary); font-weight: 500; }
 #file-preview-area .file-comment-input {
   background: var(--bg-glass-input);
   border: 1px solid var(--border-glass-light);
@@ -932,23 +958,12 @@ body, html {
   border-radius: var(--radius-sm);
   width: 100%;
 }
-
-#file-preview-area .file-actions {
-  display: flex;
-  gap: 8px;
-  align-items: center;
-}
+#file-preview-area .file-actions { display: flex; gap: 8px; align-items: center; }
 
 /* ========================================== */
-/*   РЕАКЦИИ НА СООБЩЕНИЯ                     */
+/*   РЕАКЦИИ                                  */
 /* ========================================== */
-.reactions-container {
-  display: flex;
-  gap: 6px;
-  margin-top: 6px;
-  flex-wrap: wrap;
-}
-
+.reactions-container { display: flex; gap: 6px; margin-top: 6px; flex-wrap: wrap; }
 .reaction-badge {
   background: rgba(255, 255, 255, 0.08);
   padding: 2px 8px;
@@ -961,11 +976,8 @@ body, html {
   align-items: center;
   gap: 4px;
 }
-
-.reaction-badge:hover {
-  background: rgba(138, 43, 226, 0.3);
-}
-
+.reaction-badge:hover { background: rgba(138, 43, 226, 0.3); }
+.reaction-badge.own { background: rgba(138, 43, 226, 0.3); border-color: var(--accent-purple-bright); }
 .reaction-picker {
   cursor: pointer;
   font-size: 18px;
@@ -973,19 +985,12 @@ body, html {
   padding: 2px 4px;
   border-radius: 4px;
 }
-
-.reaction-picker:hover {
-  background: rgba(255, 255, 255, 0.1);
-  transform: scale(1.2);
-}
+.reaction-picker:hover { background: rgba(255, 255, 255, 0.1); transform: scale(1.2); }
 
 /* ========================================== */
-/*   МОДАЛКА ПРОСМОТРА МЕДИА                   */
+/*   МОДАЛКА ПРОСМОТРА МЕДИА                  */
 /* ========================================== */
-#modal-media {
-  z-index: 3000;
-}
-
+#modal-media { z-index: 3000; }
 #modal-media .modal-content {
   max-width: 80vw;
   max-height: 80vh;
@@ -998,7 +1003,6 @@ body, html {
   border: 1px solid var(--border-glass-light);
   box-shadow: var(--shadow-glass);
 }
-
 #modal-media .close-media-btn {
   position: absolute;
   top: 10px;
@@ -1011,35 +1015,13 @@ body, html {
   z-index: 10;
   transition: var(--transition-fast);
 }
-
-#modal-media .close-media-btn:hover {
-  color: var(--color-error);
-  transform: rotate(90deg);
-}
-
-#media-viewer {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  width: 100%;
-  height: 100%;
-  min-height: 200px;
-}
-
-#media-viewer img,
-#media-viewer video {
-  max-width: 100%;
-  max-height: 70vh;
-  border-radius: var(--radius-sm);
-}
-
-#media-placeholder {
-  color: var(--text-muted);
-  font-size: 16px;
-}
+#modal-media .close-media-btn:hover { color: var(--color-error); transform: rotate(90deg); }
+#media-viewer { display: flex; justify-content: center; align-items: center; width: 100%; height: 100%; min-height: 200px; }
+#media-viewer img, #media-viewer video { max-width: 100%; max-height: 70vh; border-radius: var(--radius-sm); }
+#media-placeholder { color: var(--text-muted); font-size: 16px; }
 
 /* ========================================== */
-/*   ДОПОЛНИТЕЛЬНЫЕ СТИЛИ ДЛЯ ФАЙЛОВ          */
+/*   ФАЙЛЫ В СООБЩЕНИЯХ                       */
 /* ========================================== */
 .file-attachment {
   display: flex;
@@ -1053,27 +1035,86 @@ body, html {
   cursor: pointer;
   transition: var(--transition-fast);
 }
+.file-attachment:hover { background: rgba(255, 255, 255, 0.05); }
+.file-attachment .file-info { display: flex; flex-direction: column; flex: 1; overflow: hidden; }
+.file-attachment .file-name { color: var(--text-primary); font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.file-attachment .file-size { color: var(--text-muted); font-size: 11px; }
 
-.file-attachment:hover {
-  background: rgba(255, 255, 255, 0.05);
-}
-
-.file-attachment .file-info {
+/* ========================================== */
+/*   ГОЛОСОВЫЕ СООБЩЕНИЯ И УПРАВЛЕНИЕ         */
+/* ========================================== */
+.voice-message {
   display: flex;
-  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  background: rgba(0, 0, 0, 0.2);
+  padding: 8px 14px;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: var(--transition-fast);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  user-select: none;
+}
+.voice-message:hover {
+  background: rgba(138, 43, 226, 0.2);
+}
+.voice-message i {
+  font-size: 18px;
+  color: var(--accent-purple-bright);
+}
+
+#voice-controls {
+  background: rgba(0, 0, 0, 0.2);
+  padding: 8px 20px;
+  border-bottom: 1px solid var(--border-glass-light);
+  display: none;
+  align-items: center;
+  gap: 12px;
+}
+#voice-controls .voice-room-name {
+  color: var(--text-secondary);
+  font-size: 13px;
+}
+#voice-controls .btn-icon {
+  font-size: 18px;
+}
+#voice-controls .btn-icon:hover {
+  color: var(--accent-purple-bright);
+}
+#voice-controls .btn-icon#btn-leave-voice:hover {
+  color: var(--color-error);
+}
+
+/* ========================================== */
+/*   МОДАЛКА СОЗДАНИЯ КАНАЛА/ГРУППЫ           */
+/* ========================================== */
+#modal-create-channel {
+  z-index: 4000;
+}
+#modal-create-channel .auth-card {
+  max-width: 480px;
+}
+.create-channel-type-selector {
+  display: flex;
+  gap: 12px;
+  margin: 8px 0;
+}
+.create-channel-type-selector button {
   flex: 1;
-  overflow: hidden;
+  padding: 10px;
+  border: 2px solid var(--border-glass-light);
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: var(--transition-fast);
+  font-weight: 600;
 }
-
-.file-attachment .file-name {
+.create-channel-type-selector button.active {
+  border-color: var(--accent-purple-primary);
+  background: var(--accent-purple-glow);
   color: var(--text-primary);
-  font-weight: 500;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
 }
-
-.file-attachment .file-size {
-  color: var(--text-muted);
-  font-size: 11px;
+.create-channel-type-selector button:hover {
+  background: var(--bg-glass-hover);
 }

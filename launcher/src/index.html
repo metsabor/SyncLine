@@ -6,20 +6,16 @@
   <title>SyncLine</title>
   <link rel="stylesheet" href="styles/main.css">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-  <!-- QRCode библиотека для 2FA -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 </head>
 <body>
 
-  <!-- Контейнер для эффектов (снег, дождь, листья, частицы) -->
   <div id="effects-container"></div>
-
-  <!-- Контейнер для тостов -->
   <div id="toast-container" class="toast-container"></div>
 
   <main id="app-root">
     
-    <!-- Заголовок окна (Titlebar) -->
+    <!-- Заголовок окна -->
     <header class="window-titlebar">
       <div class="titlebar-brand">
         <i class="fa-solid fa-bolt" style="color: var(--accent-purple-bright);"></i>
@@ -71,11 +67,10 @@
         <button id="btn-verify-code" class="btn-glass-primary" style="width: 100%;">
           Войти <i class="fa-solid fa-check"></i>
         </button>
-        <!-- Кнопки "Назад" и "Отправить снова" будут добавлены динамически через JS -->
       </div>
     </section>
 
-    <!-- Шаг 3: Профиль (пароль + аватар) -->
+    <!-- Шаг 3: Профиль -->
     <section class="auth-wrapper" id="auth-screen-profile" style="display: none;">
       <div class="glass-panel auth-card animate-fade-in">
         <h2 class="auth-title">Создайте пароль</h2>
@@ -83,11 +78,9 @@
           <div id="preview-avatar" class="user-avatar" style="width: 80px; height: 80px; background: var(--gradient-purple); display: flex; align-items: center; justify-content: center; font-size: 32px; color: white;">?</div>
           <button id="btn-change-avatar" class="btn-glass-secondary" style="font-size: 12px; padding: 6px 12px;">Выбрать фото</button>
         </div>
-        
         <div style="width: 100%; text-align: left;">
           <div style="color: var(--text-secondary); font-size: 14px; margin-bottom: 4px;">Ваш Telegram username</div>
           <div id="display-username" style="color: var(--text-primary); font-size: 18px; font-weight: 600; margin-bottom: 12px;">@user</div>
-          
           <input type="password" class="glass-input" id="input-password" placeholder="Придумайте пароль (минимум 6 символов)" required>
           <div class="password-strength-container">
             <div class="password-strength-bar"><div id="strength-fill" class="strength-fill"></div></div>
@@ -101,15 +94,14 @@
     <!-- Основное рабочее пространство -->
     <div class="main-workspace" id="main-workspace" style="display: none;">
       
-      <!-- Левая панель серверов (Discord-style) -->
+      <!-- Левая панель (каналы/группы) -->
       <nav class="server-sidebar">
         <div class="server-icon active" title="Личные сообщения"><i class="fa-solid fa-comments"></i></div>
         <div class="server-separator"></div>
-        <div class="server-icon" title="Игровой сервер комьюнити"><div style="background:var(--gradient-purple); width:100%; height:100%; display:flex; align-items:center; justify-content:center; color:white; font-weight:bold;">S</div></div>
-        <div class="server-icon add-server" title="Создать сервер"><i class="fa-solid fa-plus"></i></div>
+        <div class="server-icon add-server" title="Создать канал или группу"><i class="fa-solid fa-plus"></i></div>
       </nav>
 
-      <!-- Боковая панель (список чатов + плеер) -->
+      <!-- Боковая панель -->
       <aside class="sidebar">
         <div class="sidebar-header">
           <div class="user-profile-summary">
@@ -125,12 +117,9 @@
           </div>
         </div>
         
-        <!-- Список чатов -->
-        <div class="chat-list" id="chat-list-container">
-          <!-- Список будет сгенерирован скриптом -->
-        </div>
+        <div class="chat-list" id="chat-list-container"></div>
 
-        <!-- Музыкальный плеер (мини-версия) -->
+        <!-- Музыкальный плеер -->
         <div class="music-player-widget">
           <div class="player-progress-bar" id="player-progress-container">
             <div class="player-progress-fill"></div>
@@ -159,15 +148,23 @@
         <header class="chat-header" id="chat-header-area">
           <div class="user-profile-summary" style="cursor: pointer;" id="btn-open-user-profile" title="Посмотреть профиль">
             <div class="user-info">
-              <div class="username" id="active-chat-username">Выберите чат или пользователя</div>
+              <div class="username" id="active-chat-username">Выберите чат или канал</div>
               <div class="status" id="active-chat-status" style="color: var(--text-muted);">Защищенный канал</div>
             </div>
           </div>
-          <div>
-            <button class="btn-icon" id="btn-my-settings" title="Мои настройки"><i class="fa-solid fa-gear"></i></button>
+          <div style="display: flex; gap: 8px;">
+            <button class="btn-icon" id="btn-join-voice" title="Войти в голосовой канал"><i class="fa-solid fa-headset"></i></button>
+            <button class="btn-icon" id="btn-my-settings" title="Настройки"><i class="fa-solid fa-gear"></i></button>
           </div>
         </header>
         
+        <!-- Голосовое управление -->
+        <div id="voice-controls" style="display: none; padding: 8px 20px; background: rgba(0,0,0,0.2); border-bottom: 1px solid var(--border-glass-light); align-items: center; gap: 12px;">
+          <span style="color: var(--text-secondary); font-size: 13px;">🔊 Голосовой канал: <span id="voice-room-name">Неизвестно</span></span>
+          <button class="btn-icon" id="btn-toggle-mic" title="Вкл/Выкл микрофон"><i class="fa-solid fa-microphone"></i></button>
+          <button class="btn-icon" id="btn-leave-voice" title="Покинуть канал" style="color: var(--color-error);"><i class="fa-solid fa-phone-slash"></i></button>
+        </div>
+
         <!-- Закрепленное сообщение -->
         <div id="pinned-message-area" class="pinned-bar" style="display: none;">
           <i class="fa-solid fa-thumbtack" style="color: var(--accent-purple-bright);"></i>
@@ -175,7 +172,6 @@
           <i class="fa-solid fa-xmark" id="btn-unpin" style="cursor:pointer; color: var(--text-muted);"></i>
         </div>
 
-        <!-- Контейнер сообщений -->
         <div class="chat-messages" id="messages-container">
           <div id="empty-chat-placeholder" style="text-align: center; color: var(--text-muted); margin-top: 40px;">
             <i class="fa-solid fa-paper-plane" style="font-size: 32px; margin-bottom: 10px; color: var(--accent-purple-primary);"></i>
@@ -183,7 +179,6 @@
           </div>
         </div>
 
-        <!-- Область предпросмотра действия (ответ/редактирование) -->
         <div id="action-preview-area" class="action-preview" style="display: none;">
           <i class="fa-solid fa-reply" id="action-icon"></i>
           <div style="flex: 1; overflow: hidden;">
@@ -193,7 +188,7 @@
           <i class="fa-solid fa-xmark" id="btn-cancel-action" style="cursor:pointer; color: var(--text-muted);"></i>
         </div>
 
-        <!-- Область предпросмотра файла (ПЕРЕД ОТПРАВКОЙ) -->
+        <!-- Предпросмотр файла -->
         <div id="file-preview-area" style="display: none; padding: 10px; background: rgba(0,0,0,0.3); border-top: 1px solid var(--border-glass-light);">
           <div style="display: flex; align-items: center; gap: 12px;">
             <div style="flex: 1;">
@@ -213,7 +208,7 @@
           </div>
         </div>
 
-        <!-- Строка ввода сообщения -->
+        <!-- Строка ввода -->
         <div class="chat-input-area" id="chat-input-area" style="display: none;">
           <button class="btn-icon" id="btn-attach-file" title="Прикрепить файл"><i class="fa-solid fa-paperclip"></i></button>
           <input type="text" class="glass-input" id="input-message" placeholder="Напишите сообщение...">
@@ -224,14 +219,13 @@
   </main>
 
   <!-- ========================================== -->
-  <!--              ПОЛНОЭКРАННЫЕ НАСТРОЙКИ         -->
+  <!--              НАСТРОЙКИ                      -->
   <!-- ========================================== -->
   <div class="settings-fullscreen-overlay" id="modal-settings">
     <button class="btn-close-settings-fullscreen" id="btn-close-settings"><i class="fas fa-times"></i></button>
-    
     <div class="settings-navigation">
         <div class="settings-nav-header">Настройки SyncLine</div>
-        <button class="settings-tab-btn active" data-tab="view-profile"><i class="fas fa-user-cog"></i> Мой Профиль</button>
+        <button class="settings-tab-btn active" data-tab="view-profile"><i class="fas fa-user-cog"></i> Профиль</button>
         <button class="settings-tab-btn" data-tab="view-appearance"><i class="fas fa-palette"></i> Оформление</button>
         <button class="settings-tab-btn" data-tab="view-effects"><i class="fas fa-magic"></i> Эффекты</button>
         <button class="settings-tab-btn" data-tab="view-security"><i class="fas fa-shield-alt"></i> Безопасность</button>
@@ -239,11 +233,9 @@
         <button class="settings-tab-btn" data-tab="view-blocked"><i class="fas fa-ban"></i> Заблокированные</button>
         <button class="settings-tab-btn" data-tab="view-verified"><i class="fas fa-check-circle"></i> Верификация</button>
     </div>
-
     <div class="settings-main-container">
-        <!-- Вкладка: Профиль -->
         <div class="settings-view active" id="view-profile">
-            <h2 class="settings-section-title">Настройка профиля</h2>
+            <h2 class="settings-section-title">Профиль</h2>
             <div class="profile-setting-block">
                 <div class="profile-large-avatar-wrapper">
                     <div class="profile-large-avatar user-avatar" id="settings-my-avatar" style="background: var(--gradient-purple); width: 100%; height: 100%;"></div>
@@ -259,38 +251,33 @@
             </div>
             <div class="settings-grid-row" style="display: flex; flex-direction: column; gap: 15px; margin-top: 20px;">
                 <div class="setting-control-item">
-                    <label style="color: var(--text-secondary); font-size: 12px; display: block; margin-bottom: 5px;">Telegram username</label>
+                    <label>Telegram username</label>
                     <input type="text" class="glass-input" id="settings-username" value="@user">
                 </div>
                 <div class="setting-control-item">
-                    <label style="color: var(--text-secondary); font-size: 12px; display: block; margin-bottom: 5px;">О себе</label>
-                    <input type="text" class="glass-input" placeholder="Расскажите что-нибудь о себе...">
+                    <label>О себе</label>
+                    <input type="text" class="glass-input" placeholder="Расскажите о себе...">
                 </div>
             </div>
-            <button class="btn-glass-primary" id="btn-save-settings" style="margin-top: 20px;">Сохранить изменения</button>
+            <button class="btn-glass-primary" id="btn-save-settings" style="margin-top: 20px;">Сохранить</button>
         </div>
-
-        <!-- Вкладка: Оформление -->
         <div class="settings-view" id="view-appearance">
-            <h2 class="settings-section-title">Оформление интерфейса</h2>
+            <h2 class="settings-section-title">Оформление</h2>
             <div class="setting-control-item" style="margin-bottom: 15px;">
-                <label style="color: var(--text-secondary); font-size: 12px; display: block; margin-bottom: 5px;">Тема приложения</label>
+                <label>Тема</label>
                 <select class="glass-input" id="settings-theme">
-                    <option value="dark">Тёмная (по умолчанию)</option>
+                    <option value="dark">Тёмная</option>
                     <option value="light">Светлая</option>
                 </select>
             </div>
             <div class="setting-control-item" style="margin-bottom: 20px;">
-                <label style="color: var(--text-secondary); font-size: 12px; display: block; margin-bottom: 5px;">Эффект водяного стекла (размытие)</label>
+                <label>Размытие стекла</label>
                 <input type="range" id="settings-blur" min="0" max="100" value="80" style="width: 100%;">
             </div>
-            <button class="btn-glass-primary" id="btn-apply-style">Применить стиль</button>
+            <button class="btn-glass-primary" id="btn-apply-style">Применить</button>
         </div>
-
-        <!-- Вкладка: Эффекты -->
         <div class="settings-view" id="view-effects">
             <h2 class="settings-section-title">Визуальные эффекты</h2>
-            <p style="color: var(--text-secondary); font-size: 13px; margin-bottom: 15px;">Включите атмосферные эффекты поверх интерфейса.</p>
             <div style="display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 16px;">
                 <button class="btn-glass-secondary effect-toggle" data-effect="snow">❄️ Снег</button>
                 <button class="btn-glass-secondary effect-toggle" data-effect="rain">🌧️ Дождь</button>
@@ -299,75 +286,59 @@
             </div>
             <button class="btn-glass-primary" id="btn-reset-effects">Сбросить эффекты</button>
         </div>
-
-        <!-- Вкладка: Безопасность -->
         <div class="settings-view" id="view-security">
-            <h2 class="settings-section-title">Безопасность учетной записи</h2>
-            
+            <h2 class="settings-section-title">Безопасность</h2>
             <div class="setting-control-item" style="margin-bottom: 15px;">
-                <label style="color: var(--text-secondary); font-size: 12px; display: block; margin-bottom: 5px;">Текущий пароль</label>
+                <label>Текущий пароль</label>
                 <input type="password" class="glass-input" placeholder="••••••••">
             </div>
             <div class="setting-control-item" style="margin-bottom: 15px;">
-                <label style="color: var(--text-secondary); font-size: 12px; display: block; margin-bottom: 5px;">Новый пароль</label>
+                <label>Новый пароль</label>
                 <input type="password" class="glass-input" placeholder="Введите новый пароль">
             </div>
             <button class="btn-glass-primary" style="margin-bottom: 20px;">Обновить пароль</button>
-
             <div class="setting-control-item" style="border-top: 1px solid var(--border-glass-light); padding-top: 20px;">
-                <label style="color: var(--text-secondary); font-size: 12px; display: block; margin-bottom: 10px;">Двухфакторная аутентификация (2FA)</label>
+                <label>Двухфакторная аутентификация (2FA)</label>
                 <button class="btn-glass-primary" id="btn-toggle-2fa" style="background: var(--color-error);">🔓 Включить 2FA</button>
                 <div id="qrcode-container" style="display:none; margin-top: 15px; background: white; padding: 10px; border-radius: var(--radius-sm); width: max-content;"></div>
-                <p style="color: var(--text-muted); font-size: 11px; margin-top: 8px;">При включении 2FA при входе будет требоваться код из приложения-аутентификатора.</p>
             </div>
-
             <div class="setting-control-item" style="border-top: 1px solid var(--border-glass-light); padding-top: 20px; margin-top: 20px;">
-                <label style="color: var(--text-secondary); font-size: 12px; display: block; margin-bottom: 10px;">Активные сессии</label>
+                <label>Активные сессии</label>
                 <div id="sessions-list" style="color: var(--text-muted); font-size: 13px;"></div>
                 <button class="btn-glass-secondary" style="margin-top: 10px;">Завершить все сессии</button>
             </div>
+            <button class="btn-glass-secondary" style="margin-top: 20px; width: 100%;" id="btn-logout-account">🚪 Выйти из аккаунта</button>
         </div>
-
-        <!-- Вкладка: Макросы -->
         <div class="settings-view" id="view-macros">
-            <h2 class="settings-section-title">Макросы и Бинды</h2>
-            <p style="color: var(--text-muted); font-size: 13px; margin-bottom: 20px;">Настрой автоматизацию задач по нажатию клавиш. Кликни на макрос и нажми нужную комбинацию.</p>
-            <div class="macro-item" style="display: flex; justify-content: space-between; align-items: center; background: rgba(255,255,255,0.03); padding: 10px; border-radius: var(--radius-sm); margin-bottom: 10px; border: 1px solid var(--border-glass-light);">
-                <span style="color: white; font-size: 14px;">📸 Быстрый скриншот</span>
-                <button class="btn-glass-secondary" style="padding: 5px 10px;">Ctrl + Shift + S</button>
+            <h2 class="settings-section-title">Макросы</h2>
+            <div class="macro-item" style="display: flex; justify-content: space-between; align-items: center; background: rgba(255,255,255,0.03); padding: 10px; border-radius: var(--radius-sm); border: 1px solid var(--border-glass-light); margin-bottom: 10px;">
+                <span>📸 Скриншот</span>
+                <button class="btn-glass-secondary">Ctrl+Shift+S</button>
             </div>
             <div class="macro-item" style="display: flex; justify-content: space-between; align-items: center; background: rgba(255,255,255,0.03); padding: 10px; border-radius: var(--radius-sm); border: 1px solid var(--border-glass-light);">
-                <span style="color: white; font-size: 14px;">🗑️ Очистить чат</span>
-                <button class="btn-glass-secondary" style="padding: 5px 10px;">Ctrl + Shift + E</button>
+                <span>🗑️ Очистить чат</span>
+                <button class="btn-glass-secondary">Ctrl+Shift+E</button>
             </div>
         </div>
-
-        <!-- Вкладка: Заблокированные -->
         <div class="settings-view" id="view-blocked">
-            <h2 class="settings-section-title">Черный список пользователей</h2>
-            <p style="color: var(--text-secondary); font-size: 13px; margin-bottom: 15px;">Здесь находятся пользователи, которых вы заблокировали.</p>
-            <div id="blocked-list-container">
-                <!-- Будет заполнено динамически -->
-            </div>
+            <h2 class="settings-section-title">Заблокированные</h2>
+            <div id="blocked-list-container"></div>
         </div>
-
-        <!-- Вкладка: Верификация -->
         <div class="settings-view" id="view-verified">
-            <h2 class="settings-section-title">Верифицированные пользователи</h2>
-            <p style="color: var(--text-secondary); font-size: 13px; margin-bottom: 15px;">Пользователи с галочкой ✅ подтверждены официально.</p>
-            <div id="verified-list-container">
-                <!-- Будет заполнено динамически -->
-            </div>
+            <h2 class="settings-section-title">Верифицированные</h2>
+            <div id="verified-list-container"></div>
         </div>
     </div>
   </div>
 
   <!-- ========================================== -->
-  <!--           МОДАЛКА КАДРИРОВАНИЯ ФОТО         -->
+  <!--              МОДАЛКИ                        -->
   <!-- ========================================== -->
+  
+  <!-- Кадрирование фото -->
   <div class="crop-modal-overlay" id="modal-crop">
     <div class="crop-card">
-        <h3 style="color: white; font-size: 18px;">Кадрирование фотографии</h3>
+        <h3 style="color: white; font-size: 18px;">Кадрирование</h3>
         <div class="crop-viewport-box">
             <img class="crop-img-preview" id="crop-image" src="" alt="Crop Area">
             <div class="crop-circle-mask"></div>
@@ -380,9 +351,7 @@
     </div>
   </div>
 
-  <!-- ========================================== -->
-  <!--        МОДАЛКА ПРОСМОТРА ФОТО/ВИДЕО         -->
-  <!-- ========================================== -->
+  <!-- Просмотр медиа -->
   <div id="modal-media" class="modal-overlay" style="display: none; z-index: 3000;">
     <div class="glass-panel auth-card animate-fade-in" style="max-width: 80vw; max-height: 80vh; padding: 20px; position: relative; overflow: hidden;">
       <button id="btn-close-media" style="position: absolute; top: 10px; right: 15px; background: none; border: none; color: white; font-size: 24px; cursor: pointer; z-index: 10;"><i class="fa-solid fa-xmark"></i></button>
@@ -394,15 +363,13 @@
     </div>
   </div>
 
-  <!-- ========================================== -->
-  <!--           МОДАЛКА ПОДТВЕРЖДЕНИЯ             -->
-  <!-- ========================================== -->
+  <!-- Подтверждение -->
   <div id="modal-confirm" class="modal-overlay" style="display: none;">
     <div class="glass-panel auth-card animate-fade-in" style="max-width: 320px; padding: 25px;">
       <h3 id="confirm-title" style="color: white; margin-bottom: 10px;">Удалить чат?</h3>
-      <p id="confirm-desc" style="color: var(--text-muted); font-size: 13px; margin-bottom: 20px;">Вся история переписки будет безвозвратно удалена.</p>
+      <p id="confirm-desc" style="color: var(--text-muted); font-size: 13px; margin-bottom: 20px;">Вся история переписки будет удалена.</p>
       <label id="confirm-block-label" style="display:flex; align-items:center; gap:10px; margin-bottom:20px; font-size:13px; color:white; cursor:pointer;">
-        <input type="checkbox" id="confirm-block-checkbox"> Заблокировать пользователя
+        <input type="checkbox" id="confirm-block-checkbox"> Заблокировать
       </label>
       <div style="display: flex; gap: 10px;">
         <button class="btn-glass-secondary" id="btn-confirm-cancel" style="flex: 1;">Отмена</button>
@@ -411,9 +378,7 @@
     </div>
   </div>
 
-  <!-- ========================================== -->
-  <!--           МОДАЛКА ПРОФИЛЯ ПОЛЬЗОВАТЕЛЯ      -->
-  <!-- ========================================== -->
+  <!-- Профиль пользователя -->
   <div id="modal-user-profile" class="modal-overlay" style="display: none;">
     <div class="glass-panel auth-card animate-fade-in" style="max-width: 350px;">
       <h3 style="color: white; margin-bottom: 15px;">Профиль</h3>
@@ -426,30 +391,53 @@
     </div>
   </div>
 
+  <!-- Создание канала/группы -->
+  <div id="modal-create-channel" class="modal-overlay" style="display: none; z-index: 4000;">
+    <div class="glass-panel auth-card animate-fade-in" style="max-width: 480px; padding: 36px;">
+      <h2 class="auth-title" style="font-size: 22px;">Создать канал или группу</h2>
+      <div class="create-channel-type-selector">
+        <button class="active" data-type="group">👥 Группа</button>
+        <button data-type="channel"># Канал</button>
+      </div>
+      <div class="setting-control-item" style="text-align: left;">
+        <label>Название</label>
+        <input type="text" class="glass-input" id="create-channel-name" placeholder="Название канала/группы" style="margin-bottom: 10px;">
+      </div>
+      <div class="setting-control-item" style="text-align: left;">
+        <label>Username (опционально)</label>
+        <input type="text" class="glass-input" id="create-channel-username" placeholder="@username" style="margin-bottom: 10px;">
+      </div>
+      <div style="display: flex; align-items: center; gap: 12px; margin: 10px 0;">
+        <input type="checkbox" id="create-channel-private">
+        <label for="create-channel-private" style="color: var(--text-secondary); cursor: pointer;">Приватный (только по приглашению)</label>
+      </div>
+      <div style="display: flex; gap: 10px; margin-top: 16px;">
+        <button class="btn-glass-secondary" id="btn-close-create-channel" style="flex: 1;">Отмена</button>
+        <button class="btn-glass-primary" id="btn-create-channel" style="flex: 1;">Создать</button>
+      </div>
+    </div>
+  </div>
+
   <!-- ========================================== -->
-  <!--           КОНТЕКСТНОЕ МЕНЮ СООБЩЕНИЙ        -->
+  <!--           КОНТЕКСТНЫЕ МЕНЮ                  -->
   <!-- ========================================== -->
   <div id="message-context-menu" class="glass-panel" style="display: none; position: absolute; z-index: 1000; flex-direction: column; padding: 5px; min-width: 160px;">
     <button class="context-btn" id="ctx-reply"><i class="fa-solid fa-reply"></i> Ответить</button>
     <button class="context-btn" id="ctx-edit"><i class="fa-solid fa-pen"></i> Изменить</button>
     <button class="context-btn" id="ctx-pin"><i class="fa-solid fa-thumbtack"></i> Закрепить</button>
-    <button class="context-btn" id="ctx-download" style="display:none;"><i class="fa-solid fa-download"></i> Скачать файл</button>
-    <!-- Реакции -->
+    <button class="context-btn" id="ctx-download" style="display:none;"><i class="fa-solid fa-download"></i> Скачать</button>
     <div style="display: flex; gap: 4px; padding: 6px 10px; flex-wrap: wrap; border-top: 1px solid var(--border-glass-light); margin-top: 4px;">
-      <span class="reaction-picker" data-emoji="👍" style="cursor:pointer; font-size:18px;">👍</span>
-      <span class="reaction-picker" data-emoji="❤️" style="cursor:pointer; font-size:18px;">❤️</span>
-      <span class="reaction-picker" data-emoji="😂" style="cursor:pointer; font-size:18px;">😂</span>
-      <span class="reaction-picker" data-emoji="😮" style="cursor:pointer; font-size:18px;">😮</span>
-      <span class="reaction-picker" data-emoji="😢" style="cursor:pointer; font-size:18px;">😢</span>
-      <span class="reaction-picker" data-emoji="🔥" style="cursor:pointer; font-size:18px;">🔥</span>
+      <span class="reaction-picker" data-emoji="👍">👍</span>
+      <span class="reaction-picker" data-emoji="❤️">❤️</span>
+      <span class="reaction-picker" data-emoji="😂">😂</span>
+      <span class="reaction-picker" data-emoji="😮">😮</span>
+      <span class="reaction-picker" data-emoji="😢">😢</span>
+      <span class="reaction-picker" data-emoji="🔥">🔥</span>
     </div>
     <hr style="border: 0; border-top: 1px solid var(--border-glass-light); margin: 5px 0;">
-    <button class="context-btn" id="ctx-delete" style="color: var(--color-error);"><i class="fa-solid fa-trash"></i> Удалить у всех</button>
+    <button class="context-btn" id="ctx-delete" style="color: var(--color-error);"><i class="fa-solid fa-trash"></i> Удалить</button>
   </div>
 
-  <!-- ========================================== -->
-  <!--        КОНТЕКСТНОЕ МЕНЮ ДЛЯ ЧАТОВ           -->
-  <!-- ========================================== -->
   <div id="chat-context-menu" class="glass-panel" style="display: none; position: absolute; z-index: 1000; flex-direction: column; padding: 5px; min-width: 180px;">
     <button class="context-btn" id="ctx-chat-pin"><i class="fa-solid fa-thumbtack"></i> Закрепить</button>
     <button class="context-btn" id="ctx-chat-mute"><i class="fa-solid fa-bell"></i> Отключить уведомления</button>
@@ -457,7 +445,6 @@
     <button class="context-btn" id="ctx-chat-delete" style="color: var(--color-error);"><i class="fa-solid fa-trash"></i> Удалить чат</button>
   </div>
 
-  <!-- Подключение скриптов -->
   <script src="js/auth.js"></script>
   <script src="js/companion.js"></script>
   <script src="js/renderer.js"></script>

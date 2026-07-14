@@ -1,5 +1,5 @@
 /**
- * SyncLine — Companion Manager (Чаты, Музыка, Бот-уведомитель)
+ * SyncLine — Companion Manager (Чаты, Каналы, Группы, Музыка, Реакции, Голос)
  * Версия: 3.5 — Дивергентный апгрейд
  */
 
@@ -11,14 +11,16 @@ class CompanionManager {
     this.chatToDelete = null;
     this.blockedUsers = [];
     this.verifiedUsers = [];
-    this.isInitialized = false; // защита от двойной инициализации
+    this.isInitialized = false;
 
     if (window.settingsManager) {
       this.blockedUsers = window.settingsManager.settings.blockedUsers || [];
       this.verifiedUsers = window.settingsManager.settings.verifiedUsers || [];
     }
 
-    // ===== СИСТЕМНЫЕ ЧАТЫ =====
+    // ==========================================
+    // СИСТЕМНЫЕ ЧАТЫ
+    // ==========================================
     this.systemChats = [
       {
         id: 'bot',
@@ -26,6 +28,7 @@ class CompanionManager {
         name: 'SyncLine Bot',
         status: '🤖 Системный',
         isSaved: true,
+        type: 'system',
         messages: [
           {
             id: 1,
@@ -46,6 +49,7 @@ class CompanionManager {
         name: 'Избранное',
         status: '📁 Хранилище',
         isSaved: true,
+        type: 'saved',
         messages: [],
         pinned: false,
         notificationsMuted: false,
@@ -55,11 +59,16 @@ class CompanionManager {
       }
     ];
 
+    // ==========================================
+    // ЗАГРУЗКА ПОЛЬЗОВАТЕЛЬСКИХ ЧАТОВ
+    // ==========================================
     this.userChats = [];
     this.loadChatsFromStorage();
     this.chats = [...this.systemChats, ...this.userChats];
 
-    // ===== МУЗЫКА (ДЕМО-ТРЕКИ ИЗ ИНТЕРНЕТА) =====
+    // ==========================================
+    // МУЗЫКА
+    // ==========================================
     this.playlist = [
       { title: 'Chill Vibes', artist: 'SyncLine Radio', url: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3' },
       { title: 'Electronic Dream', artist: 'SyncLine Radio', url: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-2.mp3' },
@@ -69,7 +78,15 @@ class CompanionManager {
     this.audio = new Audio();
     this.isPlaying = false;
 
-    // ===== ИНИЦИАЛИЗАЦИЯ (ТОЛЬКО ОДИН РАЗ) =====
+    // ==========================================
+    // ГОЛОСОВЫЕ КАНАЛЫ (LIVEKIT)
+    // ==========================================
+    this.currentVoiceRoom = null;
+    this.voiceRoom = null;
+
+    // ==========================================
+    // ИНИЦИАЛИЗАЦИЯ (ТОЛЬКО 1 РАЗ)
+    // ==========================================
     if (!this.isInitialized) {
       this.isInitialized = true;
       this.initEvents();
@@ -77,11 +94,12 @@ class CompanionManager {
       this.startPresenceSimulation();
       this.renderChatList();
       this.loadPlaylist();
+      this.initCreateChannelModal();
     }
   }
 
   // ==========================================
-  // ЗАГРУЗКА ЧАТОВ
+  // ЗАГРУЗКА/СОХРАНЕНИЕ
   // ==========================================
   loadChatsFromStorage() {
     const saved = localStorage.getItem('syncline_chats');
@@ -105,17 +123,14 @@ class CompanionManager {
   }
 
   // ==========================================
-  // МУЗЫКАЛЬНЫЙ ПЛЕЕР (РАБОЧИЙ)
+  // МУЗЫКАЛЬНЫЙ ПЛЕЕР
   // ==========================================
   loadPlaylist() {
-    // Загружаем сохранённый плейлист из localStorage (если есть)
     const saved = localStorage.getItem('syncline_playlist');
     if (saved) {
       try {
         const parsed = JSON.parse(saved);
-        if (parsed.length > 0) {
-          this.playlist = parsed;
-        }
+        if (parsed.length > 0) this.playlist = parsed;
       } catch(e) {}
     }
     if (this.playlist.length > 0) {
@@ -128,7 +143,6 @@ class CompanionManager {
   }
 
   initAudioPlayer() {
-    // Кнопка загрузки своих MP3
     const fileInput = document.getElementById('music-file-input');
     const loadBtn = document.getElementById('btn-load-music');
     if (loadBtn && fileInput) {
@@ -153,31 +167,26 @@ class CompanionManager {
       });
     }
 
-    // Кнопки управления
     const playBtn = document.getElementById('btn-play-pause');
     const nextBtn = document.getElementById('btn-next-track');
     const prevBtn = document.getElementById('btn-prev-track');
 
     if (playBtn) {
-      // Убираем старые обработчики, чтобы не дублировалось
       const newPlayBtn = playBtn.cloneNode(true);
       playBtn.parentNode.replaceChild(newPlayBtn, playBtn);
       newPlayBtn.addEventListener('click', () => this.togglePlay());
     }
-
     if (nextBtn) {
       const newNextBtn = nextBtn.cloneNode(true);
       nextBtn.parentNode.replaceChild(newNextBtn, nextBtn);
       newNextBtn.addEventListener('click', () => this.nextTrack());
     }
-
     if (prevBtn) {
       const newPrevBtn = prevBtn.cloneNode(true);
       prevBtn.parentNode.replaceChild(newPrevBtn, prevBtn);
       newPrevBtn.addEventListener('click', () => this.prevTrack());
     }
 
-    // Прогресс-бар
     const progressBar = document.getElementById('player-progress-container');
     if (progressBar) {
       const newProgressBar = progressBar.cloneNode(true);
@@ -190,7 +199,6 @@ class CompanionManager {
       });
     }
 
-    // События аудио
     this.audio.addEventListener('timeupdate', () => this.updateProgress());
     this.audio.addEventListener('loadedmetadata', () => this.updateDuration());
     this.audio.addEventListener('ended', () => this.nextTrack());
@@ -217,7 +225,7 @@ class CompanionManager {
 
   togglePlay() {
     if (this.playlist.length === 0) {
-      showCustomToast('Нет треков. Загрузите музыку или используйте демо.', 'warning');
+      showCustomToast('Нет треков. Загрузите музыку.', 'warning');
       return;
     }
     if (this.audio.paused) {
@@ -283,7 +291,7 @@ class CompanionManager {
   }
 
   // ==========================================
-  // ОТПРАВКА КОДА ПРИ ВХОДЕ (БОТ-УВЕДОМИТЕЛЬ)
+  // ОТПРАВКА КОДА (БОТ)
   // ==========================================
   sendLoginCode(email) {
     const code = Math.floor(10000 + Math.random() * 90000).toString();
@@ -299,9 +307,27 @@ class CompanionManager {
       this.saveChatsToStorage();
       this.renderMessages();
       this.renderChatList();
-      // Также показываем тост
       showCustomToast(`Код отправлен в чат с ботом: ${code}`, 'info');
     }
+  }
+
+  sendLoginNotification(username) {
+    const botChat = this.chats.find(c => c.id === 'bot');
+    if (!botChat) return;
+    const now = new Date().toLocaleString('ru-RU', {
+      day: '2-digit', month: '2-digit', year: 'numeric',
+      hour: '2-digit', minute: '2-digit'
+    });
+    const msg = `🟢 **Вход в аккаунт**\n\nПользователь **${username}** вошёл в систему.\n\n🕒 Время: ${now}`;
+    botChat.messages.push({
+      id: Date.now(),
+      text: msg,
+      type: 'incoming',
+      time: new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})
+    });
+    this.saveChatsToStorage();
+    this.renderMessages();
+    this.renderChatList();
   }
 
   // ==========================================
@@ -382,7 +408,7 @@ class CompanionManager {
   }
 
   // ==========================================
-  // ОТРИСОВКА СООБЩЕНИЙ
+  // ОТРИСОВКА СООБЩЕНИЙ (РЕАКЦИИ ИСПРАВЛЕНЫ)
   // ==========================================
   renderMessages() {
     const container = document.getElementById('messages-container');
@@ -432,24 +458,45 @@ class CompanionManager {
         mediaHtml = `<div class="file-attachment"><i class="fa-solid fa-file"></i><div class="file-info"><span class="file-name">${msgData.fileName}</span><span class="file-size">Файл</span></div></div>`;
       }
       contentHtml += mediaHtml;
+    } else if (msgData.isVoice) {
+      contentHtml += `
+        <div class="voice-message" onclick="window.companionManager.playVoice('${msgData.file_url}')">
+          <i class="fa-solid fa-play"></i>
+          <span>Голосовое сообщение</span>
+        </div>
+      `;
     } else {
       contentHtml += `<div>${msgData.text}</div>`;
     }
 
-    msg.innerHTML = `${contentHtml}<div class="msg-meta"><span>${msgData.time}</span> <span class="msg-ticks"><i class="fa-solid fa-check-double"></i></span></div>`;
-
-    if (msgData.reactions && Object.keys(msgData.reactions).length > 0) {
-      const reactionsHtml = Object.entries(msgData.reactions)
-        .map(([emoji, count]) => `<span class="reaction-badge" data-msg="${msgData.id}" data-emoji="${emoji}">${emoji} ${count}</span>`)
+    // РЕАКЦИИ (исправлено: один пользователь — одна реакция)
+    let reactionsHtml = '';
+    if (msgData.reactions) {
+      const currentUser = window.authManager?.user?.username || 'anon';
+      const reactionEntries = Object.entries(msgData.reactions);
+      const uniqueReactions = {};
+      reactionEntries.forEach(([emoji, users]) => {
+        if (!uniqueReactions[emoji]) {
+          uniqueReactions[emoji] = { count: 0, users: [] };
+        }
+        uniqueReactions[emoji].count += users.length;
+        uniqueReactions[emoji].users = users;
+      });
+      reactionsHtml = Object.entries(uniqueReactions)
+        .map(([emoji, data]) => {
+          const isOwn = data.users.includes(currentUser);
+          return `<span class="reaction-badge ${isOwn ? 'own' : ''}" data-msg="${msgData.id}" data-emoji="${emoji}" onclick="window.companionManager.toggleReaction(${msgData.id}, '${emoji}')">${emoji} ${data.count}</span>`;
+        })
         .join('');
-      msg.innerHTML += `<div class="reactions-container">${reactionsHtml}</div>`;
     }
+
+    msg.innerHTML = `${contentHtml}<div class="msg-meta"><span>${msgData.time}</span> <span class="msg-ticks"><i class="fa-solid fa-check-double"></i></span></div>${reactionsHtml ? `<div class="reactions-container">${reactionsHtml}</div>` : ''}`;
 
     msg.addEventListener('contextmenu', (e) => {
       e.preventDefault();
       this.contextTargetId = msgData.id;
       const menu = document.getElementById('message-context-menu');
-      const isFile = (msgData.type === 'file' || msgData.type === 'image' || msgData.type === 'video' || msgData.isOneTime);
+      const isFile = (msgData.type === 'file' || msgData.type === 'image' || msgData.type === 'video' || msgData.isOneTime || msgData.isVoice);
       const isOutgoing = (msgData.type === 'outgoing');
 
       document.getElementById('ctx-download').style.display = isFile ? 'flex' : 'none';
@@ -468,38 +515,42 @@ class CompanionManager {
     container.appendChild(msg);
   }
 
-  openMedia(path, type) {
-    const modal = document.getElementById('modal-media');
-    const img = document.getElementById('media-image-view');
-    const video = document.getElementById('media-video-view');
-    const placeholder = document.getElementById('media-placeholder');
-
-    img.style.display = 'none';
-    video.style.display = 'none';
-    placeholder.style.display = 'none';
-
-    if (type === 'image') {
-      img.src = path;
-      img.style.display = 'block';
-    } else if (type === 'video') {
-      video.src = path;
-      video.style.display = 'block';
-    } else {
-      placeholder.style.display = 'block';
-    }
-
-    modal.style.display = 'flex';
-  }
-
   // ==========================================
-  // РЕАКЦИИ
+  // РЕАКЦИИ (ИСПРАВЛЕНЫ)
   // ==========================================
-  addReaction(msgId, emoji) {
+  toggleReaction(msgId, emoji) {
     const msg = this.activeChat?.messages.find(m => m.id === msgId);
     if (!msg) return;
     if (!msg.reactions) msg.reactions = {};
-    if (!msg.reactions[emoji]) msg.reactions[emoji] = 0;
-    msg.reactions[emoji]++;
+
+    const currentUser = window.authManager?.user?.username || 'anon';
+
+    if (!msg.reactions[emoji]) {
+      msg.reactions[emoji] = [];
+    }
+
+    const userIndex = msg.reactions[emoji].indexOf(currentUser);
+    if (userIndex > -1) {
+      msg.reactions[emoji].splice(userIndex, 1);
+      if (msg.reactions[emoji].length === 0) {
+        delete msg.reactions[emoji];
+      }
+    } else {
+      let hasOtherReaction = false;
+      Object.keys(msg.reactions).forEach(key => {
+        const idx = msg.reactions[key].indexOf(currentUser);
+        if (idx > -1) {
+          msg.reactions[key].splice(idx, 1);
+          if (msg.reactions[key].length === 0) {
+            delete msg.reactions[key];
+          }
+          hasOtherReaction = true;
+        }
+      });
+      if (!msg.reactions[emoji]) msg.reactions[emoji] = [];
+      msg.reactions[emoji].push(currentUser);
+    }
+
     this.saveChatsToStorage();
     this.renderMessages();
   }
@@ -566,8 +617,36 @@ class CompanionManager {
     document.getElementById('message-context-menu').style.display = 'none';
   }
 
+  openMedia(path, type) {
+    const modal = document.getElementById('modal-media');
+    const img = document.getElementById('media-image-view');
+    const video = document.getElementById('media-video-view');
+    const placeholder = document.getElementById('media-placeholder');
+
+    img.style.display = 'none';
+    video.style.display = 'none';
+    placeholder.style.display = 'none';
+
+    if (type === 'image') {
+      img.src = path;
+      img.style.display = 'block';
+    } else if (type === 'video') {
+      video.src = path;
+      video.style.display = 'block';
+    } else {
+      placeholder.style.display = 'block';
+    }
+    modal.style.display = 'flex';
+  }
+
+  playVoice(url) {
+    const audio = new Audio(url);
+    audio.play();
+    showCustomToast('▶️ Воспроизведение', 'info');
+  }
+
   // ==========================================
-  // УПРАВЛЕНИЕ ЧАТАМИ
+  // УПРАВЛЕНИЕ ЧАТАМИ (С КАНАЛАМИ/ГРУППАМИ)
   // ==========================================
   renderChatList(filter = '') {
     const container = document.getElementById('chat-list-container');
@@ -608,7 +687,19 @@ class CompanionManager {
 
       const isBlocked = this.blockedUsers.includes(chat.username);
       const isVerified = this.verifiedUsers.includes(chat.username);
-      const ava = chat.isSaved ? (chat.id === 'bot' ? '🤖' : '<i class="fa-solid fa-bookmark"></i>') : chat.name[0];
+      let ava = '';
+      if (chat.isSaved) {
+        ava = chat.id === 'bot' ? '🤖' : '<i class="fa-solid fa-bookmark"></i>';
+      } else if (chat.type === 'channel') {
+        ava = '#';
+        item.style.background = 'rgba(0, 150, 255, 0.1)';
+      } else if (chat.type === 'group') {
+        ava = '👥';
+        item.style.background = 'rgba(255, 150, 0, 0.1)';
+      } else {
+        ava = chat.name ? chat.name[0].toUpperCase() : '?';
+      }
+
       let statusBadge = '';
       if (chat.pinned) statusBadge += '📌 ';
       if (chat.notificationsMuted) statusBadge += '🔕 ';
@@ -842,7 +933,153 @@ class CompanionManager {
   }
 
   // ==========================================
-  // ИНИЦИАЛИЗАЦИЯ СОБЫТИЙ (ТОЛЬКО 1 РАЗ)
+  // МОДАЛКА СОЗДАНИЯ КАНАЛА/ГРУППЫ
+  // ==========================================
+  initCreateChannelModal() {
+    const addBtn = document.querySelector('.server-icon.add-server');
+    if (!addBtn) return;
+
+    addBtn.addEventListener('click', () => {
+      const modal = document.getElementById('modal-create-channel');
+      if (!modal) return;
+      modal.style.display = 'flex';
+      document.getElementById('create-channel-name').value = '';
+      document.getElementById('create-channel-username').value = '';
+      document.querySelectorAll('.create-channel-type-selector button').forEach(btn => btn.classList.remove('active'));
+      document.querySelector('.create-channel-type-selector button[data-type="group"]').classList.add('active');
+      document.getElementById('create-channel-private').checked = false;
+    });
+
+    document.getElementById('btn-close-create-channel')?.addEventListener('click', () => {
+      document.getElementById('modal-create-channel').style.display = 'none';
+    });
+
+    document.querySelectorAll('.create-channel-type-selector button').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('.create-channel-type-selector button').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+      });
+    });
+
+    document.getElementById('btn-create-channel')?.addEventListener('click', () => {
+      const name = document.getElementById('create-channel-name').value.trim();
+      const username = document.getElementById('create-channel-username').value.trim();
+      const typeBtn = document.querySelector('.create-channel-type-selector button.active');
+      const type = typeBtn ? typeBtn.dataset.type : 'group';
+      const isPrivate = document.getElementById('create-channel-private').checked;
+
+      if (!name) {
+        showCustomToast('Введите название канала/группы', 'error');
+        return;
+      }
+
+      if (username) {
+        const exists = this.chats.some(c => c.username === username && !c.isSaved);
+        if (exists) {
+          showCustomToast('Этот username уже занят', 'error');
+          return;
+        }
+      }
+
+      const newChat = {
+        id: Date.now().toString(),
+        username: username || name,
+        name: name,
+        status: type === 'channel' ? '📢 Канал' : '👥 Группа',
+        type: type,
+        isPrivate: isPrivate,
+        isSaved: false,
+        messages: [],
+        pinned: false,
+        notificationsMuted: false,
+        avatar: null,
+        bio: '',
+        lastSeen: Date.now(),
+        createdBy: window.authManager?.user?.username || 'anon',
+        createdAt: new Date().toISOString()
+      };
+
+      this.chats.push(newChat);
+      this.saveChatsToStorage();
+      this.renderChatList();
+      document.getElementById('modal-create-channel').style.display = 'none';
+      showCustomToast(`✅ ${type === 'channel' ? 'Канал' : 'Группа'} "${name}" создан${isPrivate ? ' (приватный)' : ''}`, 'success');
+    });
+  }
+
+  // ==========================================
+  // ГОЛОСОВЫЕ КАНАЛЫ (LIVEKIT)
+  // ==========================================
+  async joinVoiceRoom(roomName) {
+    try {
+      const tokenData = await apiRequest(`/api/voice/token?room=${encodeURIComponent(roomName)}`, 'POST', null, window.authManager?.token);
+      if (!tokenData.token) {
+        showCustomToast('Не удалось получить токен', 'error');
+        return;
+      }
+      
+      const { Room, RoomEvent } = await import('livekit-client');
+      this.voiceRoom = new Room();
+      
+      await this.voiceRoom.connect(tokenData.url, tokenData.token);
+      this.currentVoiceRoom = roomName;
+      showCustomToast(`✅ Подключено к голосовому каналу: ${roomName}`, 'success');
+      
+      this.voiceRoom.on(RoomEvent.TrackSubscribed, (track, participant) => {
+        if (track.kind === 'audio') {
+          const audioElement = new Audio();
+          audioElement.srcObject = new MediaStream([track.mediaStreamTrack]);
+          audioElement.play();
+        }
+      });
+      
+      this.voiceRoom.on(RoomEvent.ParticipantConnected, (participant) => {
+        showCustomToast(`👤 ${participant.identity} присоединился`, 'info');
+      });
+      this.voiceRoom.on(RoomEvent.ParticipantDisconnected, (participant) => {
+        showCustomToast(`👤 ${participant.identity} вышел`, 'info');
+      });
+      
+      await this.voiceRoom.localParticipant.setMicrophoneEnabled(true);
+      this.showVoiceControls(true);
+      document.getElementById('voice-room-name').textContent = roomName;
+    } catch (error) {
+      showCustomToast('Ошибка подключения к голосовому каналу', 'error');
+      console.error(error);
+    }
+  }
+
+  async leaveVoiceRoom() {
+    if (this.voiceRoom) {
+      await this.voiceRoom.disconnect();
+      this.voiceRoom = null;
+      this.currentVoiceRoom = null;
+      this.showVoiceControls(false);
+      showCustomToast('Вы вышли из голосового канала', 'info');
+    }
+  }
+
+  async toggleMicrophone() {
+    if (this.voiceRoom && this.voiceRoom.localParticipant) {
+      const isEnabled = this.voiceRoom.localParticipant.isMicrophoneEnabled;
+      await this.voiceRoom.localParticipant.setMicrophoneEnabled(!isEnabled);
+      showCustomToast(isEnabled ? '🔇 Микрофон выключен' : '🎤 Микрофон включён', 'info');
+      const micBtn = document.getElementById('btn-toggle-mic');
+      if (micBtn) {
+        micBtn.innerHTML = isEnabled ? '<i class="fa-solid fa-microphone-slash"></i>' : '<i class="fa-solid fa-microphone"></i>';
+      }
+    }
+  }
+
+  showVoiceControls(show) {
+    const controls = document.getElementById('voice-controls');
+    if (controls) {
+      controls.style.display = show ? 'flex' : 'none';
+    }
+  }
+
+  // ==========================================
+  // ИНИЦИАЛИЗАЦИЯ СОБЫТИЙ
   // ==========================================
   initEvents() {
     // Отправка сообщений
@@ -863,7 +1100,7 @@ class CompanionManager {
       });
     }
 
-    // Прикрепление файлов с предпросмотром
+    // Прикрепление файлов
     const attachBtn = document.getElementById('btn-attach-file');
     const fileInput = document.createElement('input');
     fileInput.type = 'file';
@@ -890,13 +1127,11 @@ class CompanionManager {
       document.getElementById('file-preview-input').value = '';
       document.getElementById('file-preview-one-time').checked = false;
       previewArea.style.display = 'block';
-      
       previewArea.dataset.filePath = filePath;
       
       const cancelBtn = document.getElementById('file-preview-cancel');
       const sendFileBtn = document.getElementById('file-preview-send');
       
-      // Убираем старые обработчики, чтобы не дублировалось
       const newCancelBtn = cancelBtn.cloneNode(true);
       cancelBtn.parentNode.replaceChild(newCancelBtn, cancelBtn);
       newCancelBtn.addEventListener('click', () => {
@@ -1041,14 +1276,14 @@ class CompanionManager {
       newCtxDelete.addEventListener('click', () => this.deleteMessageAtAll());
     }
 
-    // Реакции
+    // Реакции (picker из контекстного меню)
     document.querySelectorAll('.reaction-picker').forEach(el => {
       const newEl = el.cloneNode(true);
       el.parentNode.replaceChild(newEl, el);
       newEl.addEventListener('click', () => {
         const emoji = newEl.dataset.emoji;
         if (this.contextTargetId) {
-          this.addReaction(this.contextTargetId, emoji);
+          this.toggleReaction(this.contextTargetId, emoji);
         }
         document.getElementById('message-context-menu').style.display = 'none';
       });
@@ -1108,6 +1343,24 @@ class CompanionManager {
         document.getElementById('modal-media').style.display = 'none';
       });
     }
+
+    // ==========================================
+    // ГОЛОСОВОЕ УПРАВЛЕНИЕ (кнопки)
+    // ==========================================
+    document.getElementById('btn-join-voice')?.addEventListener('click', () => {
+      if (this.activeChat) {
+        const roomName = this.activeChat.id === 'bot' ? 'admin-voice' : `voice-${this.activeChat.id}`;
+        this.joinVoiceRoom(roomName);
+      }
+    });
+
+    document.getElementById('btn-leave-voice')?.addEventListener('click', () => {
+      this.leaveVoiceRoom();
+    });
+
+    document.getElementById('btn-toggle-mic')?.addEventListener('click', () => {
+      this.toggleMicrophone();
+    });
   }
 
   initDemoChat() {
