@@ -144,7 +144,7 @@ async def register(user: UserRegister):
         supabase.table("users").insert({
             "id": response.user.id,
             "username": user.username,
-            "email": fake_email,  # <-- ДОБАВЛЕНО
+            "email": fake_email,
             "created_at": datetime.utcnow().isoformat()
         }).execute()
         return {"success": True, "user_id": response.user.id, "message": "Регистрация успешна"}
@@ -295,7 +295,7 @@ async def telegram_webhook(request: Request):
             supabase.table("users").insert({
                 "id": response.user.id,
                 "username": username,
-                "email": fake_email,  # <-- ДОБАВЛЕНО
+                "email": fake_email,
                 "telegram_chat_id": chat_id,
                 "created_at": datetime.utcnow().isoformat()
             }).execute()
