@@ -33,7 +33,7 @@ ADMIN_CHAT_ID = "8560498548"
 # ==========================================
 # НАСТРОЙКИ LIVEKIT (ГОЛОС)
 # ==========================================
-LIVEKIT_URL = os.getenv("LIVEKIT_URL", "https://livekit-xxxx.onrender.com")  # замени после деплоя
+LIVEKIT_URL = os.getenv("LIVEKIT_URL", "https://livekit-xxxx.onrender.com")
 LIVEKIT_API_KEY = os.getenv("LIVEKIT_API_KEY", "your-api-key")
 LIVEKIT_API_SECRET = os.getenv("LIVEKIT_API_SECRET", "your-api-secret")
 
@@ -137,8 +137,8 @@ async def register(user: UserRegister):
         existing = supabase.table("users").select("id").eq("username", user.username).execute()
         if existing.data:
             raise HTTPException(status_code=400, detail="Этот Telegram username уже используется")
-        # ИСПРАВЛЕННЫЙ ДОМЕН
-        fake_email = f"{user.username}@sync-line.me"
+        # ИСПРАВЛЕННЫЙ ДОМЕН — mail.ru
+        fake_email = f"{user.username}@mail.ru"
         response = supabase.auth.sign_up({"email": fake_email, "password": user.password})
         if not response.user:
             raise HTTPException(status_code=400, detail="Ошибка регистрации")
@@ -157,8 +157,8 @@ async def login(user: UserLogin):
         profile = supabase.table("users").select("*").eq("username", user.username).execute()
         if not profile.data:
             raise HTTPException(status_code=401, detail="Пользователь не найден")
-        # ИСПРАВЛЕННЫЙ ДОМЕН
-        fake_email = f"{user.username}@sync-line.me"
+        # ИСПРАВЛЕННЫЙ ДОМЕН — mail.ru
+        fake_email = f"{user.username}@mail.ru"
         response = supabase.auth.sign_in_with_password({"email": fake_email, "password": user.password})
         if not response.user:
             raise HTTPException(status_code=401, detail="Неверный пароль")
@@ -180,8 +180,8 @@ async def logout(user=Depends(get_current_user)):
 @app.post("/api/auth/change-password")
 async def change_password(data: ChangePassword, user=Depends(get_current_user)):
     try:
-        # ИСПРАВЛЕННЫЙ ДОМЕН
-        fake_email = f"{user.user_metadata.get('username', user.email)}@sync-line.me"
+        # ИСПРАВЛЕННЫЙ ДОМЕН — mail.ru
+        fake_email = f"{user.user_metadata.get('username', user.email)}@mail.ru"
         try:
             supabase.auth.sign_in_with_password({"email": fake_email, "password": data.old_password})
         except:
@@ -243,7 +243,6 @@ async def telegram_webhook(request: Request):
     text = message.get("text", "")
     print(f"📩 Получено сообщение от {chat_id}: {text}")
 
-    # /start
     if text == "/start":
         send_telegram_message(chat_id,
             "👋 **Привет! Я бот SyncLine.**\n\n"
@@ -254,7 +253,6 @@ async def telegram_webhook(request: Request):
             "Код для входа придёт сюда.")
         return {"ok": True}
 
-    # /help
     if text == "/help":
         send_telegram_message(chat_id,
             "📋 **Команды:**\n\n"
@@ -265,7 +263,6 @@ async def telegram_webhook(request: Request):
             "`/status` — проверить статус")
         return {"ok": True}
 
-    # /status
     if text == "/status":
         user = supabase.table("users").select("username, telegram_chat_id").eq("telegram_chat_id", chat_id).execute()
         if user.data:
@@ -279,7 +276,6 @@ async def telegram_webhook(request: Request):
                 "или `/bind @username` для привязки.")
         return {"ok": True}
 
-    # /register @username
     if text.startswith("/register "):
         username = text.replace("/register ", "").strip()
         if username.startswith("@"):
@@ -291,8 +287,8 @@ async def telegram_webhook(request: Request):
         if existing.data:
             send_telegram_message(chat_id, f"❌ Username `@{username}` уже занят. Попробуйте другой.")
             return {"ok": True}
-        # ИСПРАВЛЕННЫЙ ДОМЕН
-        fake_email = f"{username}@sync-line.me"
+        # ИСПРАВЛЕННЫЙ ДОМЕН — mail.ru
+        fake_email = f"{username}@mail.ru"
         temp_password = "".join(random.choices("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789", k=12))
         try:
             response = supabase.auth.sign_up({"email": fake_email, "password": temp_password})
@@ -315,7 +311,6 @@ async def telegram_webhook(request: Request):
             send_telegram_message(chat_id, f"❌ Ошибка: {str(e)}")
         return {"ok": True}
 
-    # /bind @username
     if text.startswith("/bind "):
         username = text.replace("/bind ", "").strip()
         if username.startswith("@"):
@@ -409,7 +404,7 @@ async def join_channel(channel_id: str, user=Depends(get_current_user)):
         raise HTTPException(status_code=500, detail=str(e))
 
 # ==========================================
-# ЭНДПОИНТЫ ДЛЯ СООБЩЕНИЙ (ЧАТЫ)
+# ЭНДПОИНТЫ ДЛЯ ЧАТОВ И СООБЩЕНИЙ
 # ==========================================
 @app.get("/api/chats")
 async def get_chats(user=Depends(get_current_user)):
