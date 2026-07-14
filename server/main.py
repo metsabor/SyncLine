@@ -137,7 +137,6 @@ async def register(user: UserRegister):
         existing = supabase.table("users").select("id").eq("username", user.username).execute()
         if existing.data:
             raise HTTPException(status_code=400, detail="Этот Telegram username уже используется")
-        # ИСПРАВЛЕННЫЙ ДОМЕН — gmail.com
         fake_email = f"{user.username}@gmail.com"
         response = supabase.auth.sign_up({"email": fake_email, "password": user.password})
         if not response.user:
@@ -145,6 +144,7 @@ async def register(user: UserRegister):
         supabase.table("users").insert({
             "id": response.user.id,
             "username": user.username,
+            "email": fake_email,  # <-- ДОБАВЛЕНО
             "created_at": datetime.utcnow().isoformat()
         }).execute()
         return {"success": True, "user_id": response.user.id, "message": "Регистрация успешна"}
@@ -157,7 +157,6 @@ async def login(user: UserLogin):
         profile = supabase.table("users").select("*").eq("username", user.username).execute()
         if not profile.data:
             raise HTTPException(status_code=401, detail="Пользователь не найден")
-        # ИСПРАВЛЕННЫЙ ДОМЕН — gmail.com
         fake_email = f"{user.username}@gmail.com"
         response = supabase.auth.sign_in_with_password({"email": fake_email, "password": user.password})
         if not response.user:
@@ -180,7 +179,6 @@ async def logout(user=Depends(get_current_user)):
 @app.post("/api/auth/change-password")
 async def change_password(data: ChangePassword, user=Depends(get_current_user)):
     try:
-        # ИСПРАВЛЕННЫЙ ДОМЕН — gmail.com
         fake_email = f"{user.user_metadata.get('username', user.email)}@gmail.com"
         try:
             supabase.auth.sign_in_with_password({"email": fake_email, "password": data.old_password})
@@ -287,7 +285,6 @@ async def telegram_webhook(request: Request):
         if existing.data:
             send_telegram_message(chat_id, f"❌ Username `@{username}` уже занят. Попробуйте другой.")
             return {"ok": True}
-        # ИСПРАВЛЕННЫЙ ДОМЕН — gmail.com
         fake_email = f"{username}@gmail.com"
         temp_password = "".join(random.choices("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789", k=12))
         try:
@@ -298,6 +295,7 @@ async def telegram_webhook(request: Request):
             supabase.table("users").insert({
                 "id": response.user.id,
                 "username": username,
+                "email": fake_email,  # <-- ДОБАВЛЕНО
                 "telegram_chat_id": chat_id,
                 "created_at": datetime.utcnow().isoformat()
             }).execute()
