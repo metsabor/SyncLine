@@ -32,19 +32,25 @@
       </div>
     </header>
 
-    <!-- Шаг 1: Ввод почты -->
-    <section class="auth-wrapper" id="auth-screen-email">
+    <!-- Шаг 1: Ввод Telegram username -->
+    <section class="auth-wrapper" id="auth-screen-username">
       <div class="glass-panel auth-card animate-fade-in pulse-glow">
         <div>
           <h2 class="auth-title">Вход в SyncLine</h2>
-          <p class="auth-subtitle">Быстрый обмен файлами и ссылками</p>
+          <p class="auth-subtitle">Введите ваш Telegram username для получения кода</p>
         </div>
-        <form id="form-email-step">
-          <input type="email" class="glass-input" id="input-email" placeholder="syncline@internet.ru" required>
+        <form id="form-username-step">
+          <input type="text" class="glass-input" id="input-username" placeholder="@telegram_username" required>
           <button type="submit" class="btn-glass-primary" style="width: 100%; margin-top: 16px;">
             Получить код <i class="fa-solid fa-arrow-right"></i>
           </button>
         </form>
+        <p style="color: var(--text-muted); font-size: 12px; margin-top: 10px;">
+          Нет аккаунта? Напишите <strong>@SyncLine_bot</strong> команду <strong>/register @ваш_username</strong>
+        </p>
+        <p style="color: var(--text-muted); font-size: 12px; margin-top: 4px;">
+          Уже есть аккаунт, но не привязан Telegram? Напишите <strong>/bind @ваш_username</strong>
+        </p>
       </div>
     </section>
 
@@ -53,7 +59,7 @@
       <div class="glass-panel auth-card animate-fade-in">
         <div>
           <h2 class="auth-title">Подтверждение</h2>
-          <p class="auth-subtitle">Код отправлен на <span id="target-email-label" style="color: var(--text-accent);"></span></p>
+          <p class="auth-subtitle">Код отправлен в Telegram на <span id="target-username-label" style="color: var(--text-accent);"></span></p>
         </div>
         <div class="code-input-container">
           <input type="text" maxlength="1" class="code-digit" autofocus>
@@ -65,25 +71,24 @@
         <button id="btn-verify-code" class="btn-glass-primary" style="width: 100%;">
           Войти <i class="fa-solid fa-check"></i>
         </button>
+        <!-- Кнопки "Назад" и "Отправить снова" будут добавлены динамически через JS -->
       </div>
     </section>
 
-    <!-- Шаг 3: Профиль (Аватар, юзернейм, пароль) -->
+    <!-- Шаг 3: Профиль (пароль + аватар) -->
     <section class="auth-wrapper" id="auth-screen-profile" style="display: none;">
       <div class="glass-panel auth-card animate-fade-in">
-        <h2 class="auth-title">Ваш профиль</h2>
+        <h2 class="auth-title">Создайте пароль</h2>
         <div style="display: flex; flex-direction: column; align-items: center; gap: 10px;">
           <div id="preview-avatar" class="user-avatar" style="width: 80px; height: 80px; background: var(--gradient-purple); display: flex; align-items: center; justify-content: center; font-size: 32px; color: white;">?</div>
           <button id="btn-change-avatar" class="btn-glass-secondary" style="font-size: 12px; padding: 6px 12px;">Выбрать фото</button>
         </div>
         
-        <div class="input-group" style="position: relative; width: 100%;">
-          <input type="text" class="glass-input" id="input-username" placeholder="@username" required>
-          <span id="username-status" style="position: absolute; right: 12px; top: 12px; font-size: 14px;"></span>
-        </div>
-
         <div style="width: 100%; text-align: left;">
-          <input type="password" class="glass-input" id="input-password" placeholder="Пароль для защиты" required>
+          <div style="color: var(--text-secondary); font-size: 14px; margin-bottom: 4px;">Ваш Telegram username</div>
+          <div id="display-username" style="color: var(--text-primary); font-size: 18px; font-weight: 600; margin-bottom: 12px;">@user</div>
+          
+          <input type="password" class="glass-input" id="input-password" placeholder="Придумайте пароль (минимум 6 символов)" required>
           <div class="password-strength-container">
             <div class="password-strength-bar"><div id="strength-fill" class="strength-fill"></div></div>
             <span id="strength-text" class="strength-text">Надёжность пароля</span>
@@ -254,12 +259,8 @@
             </div>
             <div class="settings-grid-row" style="display: flex; flex-direction: column; gap: 15px; margin-top: 20px;">
                 <div class="setting-control-item">
-                    <label style="color: var(--text-secondary); font-size: 12px; display: block; margin-bottom: 5px;">Юзернейм</label>
+                    <label style="color: var(--text-secondary); font-size: 12px; display: block; margin-bottom: 5px;">Telegram username</label>
                     <input type="text" class="glass-input" id="settings-username" value="@user">
-                </div>
-                <div class="setting-control-item">
-                    <label style="color: var(--text-secondary); font-size: 12px; display: block; margin-bottom: 5px;">Email</label>
-                    <input type="email" class="glass-input" id="settings-email" value="syncline@internet.ru">
                 </div>
                 <div class="setting-control-item">
                     <label style="color: var(--text-secondary); font-size: 12px; display: block; margin-bottom: 5px;">О себе</label>
