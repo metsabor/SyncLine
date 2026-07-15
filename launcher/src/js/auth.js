@@ -67,6 +67,23 @@ async function verifyCode(username, code) {
   }
 }
 
+// ==========================================
+// ПРОВЕРКА СУЩЕСТВОВАНИЯ ПОЛЬЗОВАТЕЛЯ
+// ==========================================
+async function checkUserExists(username) {
+  try {
+    const response = await fetch(`${API_URL}/api/auth/check-user?username=${encodeURIComponent(username)}`);
+    if (!response.ok) {
+      return false;
+    }
+    const data = await response.json();
+    return data.exists;
+  } catch (error) {
+    console.error('Ошибка проверки пользователя:', error);
+    return false;
+  }
+}
+
 async function changePassword(oldPassword, newPassword, token) {
   try {
     const result = await apiRequest('/api/auth/change-password', 'POST', { old_password: oldPassword, new_password: newPassword }, token);
@@ -108,9 +125,7 @@ class SettingsManager {
         verifiedUsers: ['SyncLine Bot'],
         macros: { screenshot: 'Ctrl+Shift+S', clearChat: 'Ctrl+Shift+E' },
         effects: { snow: false, rain: false, leaves: false, particles: false },
-        // Убрана 2FA
         sessions: [ { id: 1, name: 'Windows • Chrome', time: 'Сейчас', isCurrent: true } ],
-        // Новые поля для профиля
         birthday: '',
         bio: '',
         pinnedChats: []
@@ -178,8 +193,6 @@ class SettingsManager {
   applyTheme(theme) {
     const root = document.documentElement;
     if (theme === 'light') {
-      // Белая тема убрана, оставлена только тёмная
-      // Но оставим код для совместимости, если вдруг
       root.style.setProperty('--bg-dark-base', 'rgba(240, 235, 250, 0.85)');
       root.style.setProperty('--text-primary', '#1a1a2e');
       root.style.setProperty('--text-secondary', '#4a4a6a');
@@ -200,7 +213,6 @@ class SettingsManager {
     }
   }
   applyBlur(strength) {
-    // Функция оставлена для совместимости, но в интерфейсе slider удалён
     const panels = document.querySelectorAll('.glass-panel, .glass-input, .toast, .settings-fullscreen-overlay, .crop-card');
     const blurValue = `${strength}px`;
     panels.forEach(el => {
@@ -226,6 +238,7 @@ class AuthManager {
     this.isCodeRequested = false;
     this.sendButtonLocked = false;
     this.resendButtonLocked = false;
+    this.isExistingUser = false; // флаг для экрана профиля
     
     this.token = localStorage.getItem('syncline_token') || null;
     this.user = localStorage.getItem('syncline_user') ? JSON.parse(localStorage.getItem('syncline_user')) : null;
@@ -319,7 +332,6 @@ class AuthManager {
   async changePassword(oldPassword, newPassword) {
     const success = await changePassword(oldPassword, newPassword, this.token);
     if (success && window.companionManager && this.user) {
-      // Отправляем уведомление в бот и Telegram
       window.companionManager.sendPasswordChangeNotification(this.user.username);
     }
     return success;
@@ -414,7 +426,6 @@ class AuthManager {
         }
         const usernameInput = document.getElementById('input-username');
         let username = usernameInput.value.trim();
-        // Убираем @ если ввели
         username = username.replace(/^@/, '');
         if (username === "") {
           showCustomToast("Введите ваш username", "error");
@@ -449,7 +460,6 @@ class AuthManager {
     // Шаг 2: Код
     const codeScreen = document.getElementById('auth-screen-code');
     if (codeScreen) {
-      // Кнопка "Назад"
       const backBtn = document.createElement('button');
       backBtn.className = 'btn-glass-secondary';
       backBtn.textContent = '⬅ Назад (изменить username)';
@@ -485,7 +495,6 @@ class AuthManager {
         document.getElementById('btn-verify-code').textContent = 'Войти';
       });
 
-      // Кнопка "Отправить код снова"
       const resendBtn = document.createElement('button');
       resendBtn.className = 'btn-glass-secondary';
       resendBtn.textContent = '🔄 Отправить код снова';
@@ -549,6 +558,9 @@ class AuthManager {
           if (isValid) {
             this.resetRetryTimer();
             this.resendButtonLocked = false;
+            // Проверяем, существует ли пользователь
+            const exists = await checkUserExists(username);
+            this.isExistingUser = exists;
             this.switchScreen('auth-screen-code', 'auth-screen-profile');
           }
         } else {
@@ -557,7 +569,7 @@ class AuthManager {
       });
     }
 
-    // Шаг 3: Профиль (аватар, пароль)
+    // Шаг 3: Профиль (аватар + пароль)
     const btnChangeAvatar = document.getElementById('btn-change-avatar');
     if (btnChangeAvatar) {
       btnChangeAvatar.addEventListener('click', async () => {
@@ -585,6 +597,19 @@ class AuthManager {
       usernameDisplay.textContent = `@${this.currentUsername}`;
     }
 
+    // Обновляем заголовок и кнопку в зависимости от isExistingUser
+    const updateProfileScreen = () => {
+      const title = document.querySelector('#auth-screen-profile .auth-title');
+      const btn = document.getElementById('btn-finish-setup');
+      if (this.isExistingUser) {
+        if (title) title.textContent = 'Введите пароль';
+        if (btn) btn.textContent = 'Войти';
+      } else {
+        if (title) title.textContent = 'Создайте пароль';
+        if (btn) btn.textContent = 'Начать использование';
+      }
+    };
+
     const btnFinishSetup = document.getElementById('btn-finish-setup');
     if (btnFinishSetup) {
       btnFinishSetup.addEventListener('click', async (e) => {
@@ -593,7 +618,7 @@ class AuthManager {
         const password = document.getElementById('input-password').value;
 
         if (password.length === 0) {
-          showCustomToast("Пожалуйста, задайте пароль для защиты", "error");
+          showCustomToast("Пожалуйста, введите пароль", "error");
           document.getElementById('input-password').focus();
           return;
         }
@@ -603,34 +628,42 @@ class AuthManager {
           return;
         }
 
-        const loggedIn = await this.login(username, password);
-        if (!loggedIn) {
+        if (this.isExistingUser) {
+          // Вход
+          const loggedIn = await this.login(username, password);
+          if (loggedIn) {
+            this.switchScreen('auth-screen-profile', 'main-workspace');
+            if (window.companionManager) window.companionManager.initDemoChat();
+            showCustomToast("Добро пожаловать!", "success");
+          }
+        } else {
+          // Регистрация
           const registered = await this.register(username, password);
           if (registered) {
-            await this.login(username, password);
-          } else {
-            return;
+            const loggedIn = await this.login(username, password);
+            if (loggedIn) {
+              this.switchScreen('auth-screen-profile', 'main-workspace');
+              if (window.companionManager) window.companionManager.initDemoChat();
+              showCustomToast("Добро пожаловать!", "success");
+            }
           }
         }
-
-        this.settings.updateUsername(username);
-        document.getElementById('current-user-name').textContent = username;
-
-        if (this.userAvatarPath) {
-          this.settings.updateAvatar(this.userAvatarPath);
-          const currentAva = document.getElementById('current-user-avatar');
-          if (currentAva) {
-            currentAva.innerHTML = '';
-            currentAva.style.backgroundImage = `url('${this.userAvatarPath}')`;
-            currentAva.style.backgroundSize = 'cover';
-          }
-        }
-
-        this.switchScreen('auth-screen-profile', 'main-workspace');
-        if (window.companionManager) window.companionManager.initDemoChat();
-        showCustomToast("Добро пожаловать в SyncLine!", "success");
       });
     }
+
+    // При переключении на экран профиля обновляем текст
+    const profileObserver = new MutationObserver(() => {
+      const profileScreen = document.getElementById('auth-screen-profile');
+      if (profileScreen && profileScreen.style.display !== 'none') {
+        updateProfileScreen();
+      }
+    });
+    const codeScreenObserver = new MutationObserver(() => {
+      const codeScreenEl = document.getElementById('auth-screen-code');
+      if (codeScreenEl && codeScreenEl.style.display !== 'none') {
+        // Ничего не делаем, но нужно отследить
+      }
+    });
 
     // =====================================
     // НАСТРОЙКИ (без 2FA)
@@ -734,7 +767,6 @@ class AuthManager {
     // =====================================
     // БЕЗОПАСНОСТЬ (без 2FA)
     // =====================================
-    // Смена пароля
     const securityView = document.getElementById('view-security');
     if (securityView) {
       const changePassBtn = document.getElementById('btn-change-password');
@@ -868,7 +900,6 @@ class AuthManager {
     document.getElementById('settings-theme').value = s.theme || 'dark';
     document.getElementById('settings-blur').value = s.blurStrength || 80;
     document.getElementById('settings-display-username').textContent = s.username || '@user';
-    // Загружаем новые поля
     if (document.getElementById('settings-birthday')) {
       document.getElementById('settings-birthday').value = s.birthday || '';
     }
@@ -882,7 +913,6 @@ class AuthManager {
         ava.style.backgroundSize = 'cover';
       }
     }
-    // Сессии
     const sessionsList = document.getElementById('sessions-list');
     if (sessionsList) {
       sessionsList.innerHTML = '';

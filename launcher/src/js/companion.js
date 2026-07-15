@@ -1,5 +1,5 @@
 /**
- * SyncLine — Companion Manager (Чаты, Каналы, Группы, Монетка, Эмодзи)
+ * SyncLine — Companion Manager (Чаты, Каналы, Группы, Монетка, Эмодзи, Пользователи)
  * Версия: 4.0 — Мега-апдейт
  */
 
@@ -12,6 +12,7 @@ class CompanionManager {
     this.blockedUsers = [];
     this.verifiedUsers = [];
     this.isInitialized = false;
+    this.allUsers = [];
 
     if (window.settingsManager) {
       this.blockedUsers = window.settingsManager.settings.blockedUsers || [];
@@ -29,7 +30,7 @@ class CompanionManager {
         status: '🤖 Системный',
         isSaved: true,
         type: 'system',
-        hasVoice: false, // <-- НЕТ ЗВОНКОВ
+        hasVoice: false,
         messages: [
           {
             id: 1,
@@ -51,7 +52,7 @@ class CompanionManager {
         status: '📁 Хранилище',
         isSaved: true,
         type: 'saved',
-        hasVoice: false, // <-- НЕТ ЗВОНКОВ
+        hasVoice: false,
         messages: [],
         pinned: false,
         notificationsMuted: false,
@@ -98,6 +99,8 @@ class CompanionManager {
       this.initCreateChannelModal();
       this.initEmojiPicker();
       this.checkStreaks();
+      // Загружаем пользователей после авторизации
+      this.loadUsers();
     }
   }
 
@@ -126,6 +129,54 @@ class CompanionManager {
   }
 
   // ==========================================
+  // ЗАГРУЗКА ПОЛЬЗОВАТЕЛЕЙ С СЕРВЕРА
+  // ==========================================
+  async loadUsers() {
+    try {
+      const token = window.authManager?.token;
+      if (!token) return;
+
+      const response = await fetch(`${window.authManager?.API_URL || 'https://syncline-f44k.onrender.com'}/api/users`, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      if (!response.ok) return;
+      const data = await response.json();
+      if (data.users) {
+        this.allUsers = data.users;
+        // Добавляем пользователей в список чатов
+        data.users.forEach(user => {
+          const exists = this.chats.some(c => c.username === user.username && !c.isSaved);
+          if (!exists && user.username !== window.authManager?.user?.username) {
+            this.chats.push({
+              id: 'user_' + user.username,
+              username: user.username,
+              name: user.username,
+              status: user.status || 'в сети',
+              isSaved: false,
+              type: 'private',
+              hasVoice: true,
+              messages: [],
+              pinned: false,
+              notificationsMuted: false,
+              avatar: user.avatar_url || null,
+              bio: '',
+              lastSeen: user.last_seen ? new Date(user.last_seen).getTime() : Date.now(),
+              coinLevel: 0,
+              coinDays: 0
+            });
+          }
+        });
+        this.saveChatsToStorage();
+        this.renderChatList();
+      }
+    } catch (error) {
+      console.error('Ошибка загрузки пользователей:', error);
+    }
+  }
+
+  // ==========================================
   // МОНЕТКА (СТРИКИ)
   // ==========================================
   checkStreaks() {
@@ -137,7 +188,6 @@ class CompanionManager {
         this.coinStreaks[key] = { days: 0, lastDate: null, coinLevel: 0 };
       }
       const streak = this.coinStreaks[key];
-      // Проверяем, есть ли сообщения сегодня
       const todayMessages = chat.messages.filter(m => {
         const msgDate = new Date(m.time).toDateString();
         return msgDate === today;
@@ -153,10 +203,8 @@ class CompanionManager {
           streak.days = 1;
         }
         streak.lastDate = today;
-        // Уровень монетки растёт с каждым днём
         streak.coinLevel = Math.min(10, Math.floor(streak.days / 3) + 1);
         if (streak.days >= 3) {
-          // Показываем монетку в интерфейсе
           chat.coinLevel = streak.coinLevel;
           chat.coinDays = streak.days;
         }
@@ -739,7 +787,6 @@ class CompanionManager {
         ava = chat.name ? chat.name[0].toUpperCase() : '?';
       }
 
-      // Монетка в списке чатов
       if (chat.coinLevel && chat.coinDays >= 3) {
         const coinEmojis = ['🪙', '🪙', '🪙', '🪙', '🪙', '🥇', '🥇', '🥇', '👑', '👑'];
         const coin = coinEmojis[Math.min(chat.coinLevel - 1, coinEmojis.length - 1)];
@@ -760,7 +807,6 @@ class CompanionManager {
 
       item.addEventListener('click', () => this.selectChat(chat));
 
-      // ПКМ (контекстное меню)
       item.addEventListener('contextmenu', (e) => {
         e.preventDefault();
         this.contextChat = chat;
@@ -800,7 +846,6 @@ class CompanionManager {
     document.getElementById('active-chat-status').textContent = chat.status || 'Защищенный канал';
     document.getElementById('chat-input-area').style.display = 'flex';
 
-    // Показываем/скрываем кнопку звонка
     const voiceBtn = document.getElementById('btn-join-voice');
     if (voiceBtn) {
       voiceBtn.style.display = (chat.hasVoice !== false && !chat.isSaved && chat.id !== 'bot') ? 'block' : 'none';
@@ -819,7 +864,7 @@ class CompanionManager {
   }
 
   // ==========================================
-  // МОДАЛКА СОЗДАНИЯ КАНАЛА/ГРУППЫ (ИСПРАВЛЕНО)
+  // МОДАЛКА СОЗДАНИЯ КАНАЛА/ГРУППЫ
   // ==========================================
   initCreateChannelModal() {
     const addBtn = document.querySelector('.server-icon.add-server');
@@ -1008,7 +1053,6 @@ class CompanionManager {
     document.getElementById('profile-modal-birthday').textContent = user.birthday || 'Не указан';
     document.getElementById('profile-modal-coin').textContent = user.coinDays ? `${user.coinDays} дней общения 🪙` : '0 дней';
 
-    // Закреплённые каналы/группы
     const pinnedContainer = document.getElementById('profile-modal-pinned');
     if (pinnedContainer) {
       pinnedContainer.innerHTML = '';
@@ -1356,11 +1400,9 @@ class CompanionManager {
   // ==========================================
   async joinVoiceRoom(roomName) {
     try {
-      // Импортируем livekit-client динамически
       const { Room, RoomEvent } = await import('livekit-client');
       this.voiceRoom = new Room();
       
-      // Получаем токен
       const tokenData = await apiRequest(`/api/voice/token?room=${encodeURIComponent(roomName)}`, 'POST', null, window.authManager?.token);
       if (!tokenData.token) {
         showCustomToast('Не удалось получить токен', 'error');

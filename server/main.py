@@ -187,6 +187,28 @@ async def logout(user=Depends(get_current_user)):
     return {"success": True, "message": "Выход выполнен"}
 
 # ==========================================
+# ПРОВЕРКА СУЩЕСТВОВАНИЯ ПОЛЬЗОВАТЕЛЯ
+# ==========================================
+@app.get("/api/auth/check-user")
+async def check_user(username: str):
+    try:
+        result = supabase.table("users").select("id").eq("username", username).execute()
+        return {"exists": len(result.data) > 0}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+# ==========================================
+# ПОЛУЧЕНИЕ СПИСКА ПОЛЬЗОВАТЕЛЕЙ
+# ==========================================
+@app.get("/api/users")
+async def get_users(user=Depends(get_current_user)):
+    try:
+        result = supabase.table("users").select("username, avatar_url, status, last_seen").neq("id", user.id).execute()
+        return {"users": result.data}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+# ==========================================
 # СМЕНА ПАРОЛЯ (с уведомлением)
 # ==========================================
 @app.post("/api/auth/change-password")
