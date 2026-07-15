@@ -101,7 +101,7 @@ def get_current_user(authorization: str = Header(None)):
 
 def send_telegram_code(chat_id: str, code: str):
     url = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendMessage"
-    text = f"""🔐 **Код для входа в SyncLine: {code}**
+    text = f"""🔐 **Код для входа в SyncLine: *{code}***
 
 *Не давайте этот код никому, даже если кто-то представляется сотрудником SyncLine.*
 
