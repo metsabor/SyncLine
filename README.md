@@ -19,11 +19,11 @@
 
 **📦 Установка**
 
-> 🖥️ **Поддерживаемые ОС:** Windows 10/11 (x64).  
-> *Для macOS и Linux — сборка в разработке.*
+🖥️ **Поддерживаемые ОС:** Windows 10/11 (x64).  
+*Для macOS и Linux — сборка в разработке.*
 
-*Скачать готовый установщик*
-Перейдите в раздел [Скачать установщик SyncLine](https://drive.google.com/file/d/1X_HcBPcytfnLgoxqRKGbxDusy_CUuQ-a/view?usp=sharing) и скачайте последнюю версию `SyncLine.exe` для Windows.
+>*Скачать готовый установщик*
+>Перейдите в раздел [Скачать установщик SyncLine](https://drive.google.com/file/d/1X_HcBPcytfnLgoxqRKGbxDusy_CUuQ-a/view?usp=sharing) и скачайте последнюю версию `SyncLine.exe` для Windows.
 
 
 ```bash
