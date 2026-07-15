@@ -1,6 +1,6 @@
 /**
- * SyncLine — Companion Manager (Чаты, Каналы, Группы, Монетка, Эмодзи, Пользователи)
- * Версия: 4.1 — Финальная
+ * SyncLine — Companion Manager (Чаты, Каналы, Группы, Монетка, Эмодзи, Пользователи, Уведомления)
+ * Версия: 4.2 — С уведомлениями и звуком
  */
 
 class CompanionManager {
@@ -103,6 +103,57 @@ class CompanionManager {
       // Загружаем пользователей, если уже есть токен
       if (window.authManager && window.authManager.token) {
         this.loadUsers();
+      }
+    }
+  }
+
+  // ==========================================
+  // УВЕДОМЛЕНИЯ И ЗВУК
+  // ==========================================
+  playNotificationSound() {
+    // Через Electron API (если доступно)
+    if (window.electronAPI && typeof window.electronAPI.playSound === 'function') {
+      window.electronAPI.playSound();
+      return;
+    }
+    // Запасной вариант через HTML5 Audio
+    try {
+      const audio = new Audio('/src/assets/sounds/notification.mp3');
+      audio.volume = 0.5;
+      audio.play().catch(() => {});
+    } catch (e) {
+      // Игнорируем ошибки
+    }
+  }
+
+  notifyNewMessage(chatUsername, messageText) {
+    // Если чат с ботом или Избранное — уведомления не показываем (можно убрать условие по желанию)
+    if (chatUsername === 'SyncLine Bot' || chatUsername === 'Избранное') {
+      this.playNotificationSound();
+      return;
+    }
+
+    // Если окно в фокусе — только звук
+    if (document.hasFocus()) {
+      this.playNotificationSound();
+      return;
+    }
+
+    // Если окно не в фокусе — звук + уведомление
+    this.playNotificationSound();
+
+    // Если есть electronAPI — отправляем нативное уведомление
+    if (window.electronAPI && typeof window.electronAPI.sendNotification === 'function') {
+      const title = `📩 ${chatUsername}`;
+      const body = messageText.length > 60 ? messageText.slice(0, 60) + '...' : messageText;
+      window.electronAPI.sendNotification(title, body, false);
+    } else {
+      // Запасной вариант через Notification API браузера
+      if ('Notification' in window && Notification.permission === 'granted') {
+        new Notification(`📩 ${chatUsername}`, {
+          body: messageText.length > 60 ? messageText.slice(0, 60) + '...' : messageText,
+          icon: '/src/assets/images/icon.ico'
+        });
       }
     }
   }
@@ -458,6 +509,8 @@ class CompanionManager {
       this.renderMessages();
       this.renderChatList();
       showCustomToast(`Код отправлен в чат с ботом: ${code}`, 'info');
+      // Уведомление о коде (если окно не активно)
+      this.notifyNewMessage('SyncLine Bot', `Код для входа: ${code}`);
     }
     // Также отправляем в Telegram (если есть chat_id)
     if (window.authManager?.token) {
@@ -489,6 +542,7 @@ class CompanionManager {
     this.saveChatsToStorage();
     this.renderMessages();
     this.renderChatList();
+    this.notifyNewMessage('SyncLine Bot', `Вход в аккаунт: ${username}`);
   }
 
   sendPasswordChangeNotification(username) {
@@ -508,6 +562,7 @@ class CompanionManager {
     this.saveChatsToStorage();
     this.renderMessages();
     this.renderChatList();
+    this.notifyNewMessage('SyncLine Bot', `Пароль изменён для ${username}`);
   }
 
   // ==========================================
@@ -556,6 +611,11 @@ class CompanionManager {
     this.renderChatList();
     this.saveChatsToStorage();
     this.checkStreaks();
+
+    // Если это чат с ботом и команда — обрабатываем (уведомление будет внутри handleBotCommand)
+    if (this.activeChat.id === 'bot' && text.startsWith('/')) {
+      this.handleBotCommand(text);
+    }
   }
 
   sendFileMessage(filePath, comment = '', isOneTime = false) {
@@ -708,6 +768,13 @@ class CompanionManager {
     });
 
     container.appendChild(msg);
+
+    // === УВЕДОМЛЕНИЕ ДЛЯ ВХОДЯЩИХ СООБЩЕНИЙ ===
+    if (msgData.type === 'incoming' && msgData.id !== 1) {
+      // Исключаем системное приветствие (id: 1)
+      const chatUsername = this.activeChat?.username || 'Неизвестный';
+      this.notifyNewMessage(chatUsername, msgData.text || 'Новое сообщение');
+    }
   }
 
   toggleReaction(msgId, emoji) {
