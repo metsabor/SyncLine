@@ -1,6 +1,6 @@
 /**
  * SyncLine — Auth Manager (Авторизация по Telegram username)
- * Версия: 4.0 — Мега-апдейт
+ * Версия: 4.1 — Финальная
  */
 
 const API_URL = 'https://syncline-f44k.onrender.com';
@@ -67,15 +67,10 @@ async function verifyCode(username, code) {
   }
 }
 
-// ==========================================
-// ПРОВЕРКА СУЩЕСТВОВАНИЯ ПОЛЬЗОВАТЕЛЯ
-// ==========================================
 async function checkUserExists(username) {
   try {
     const response = await fetch(`${API_URL}/api/auth/check-user?username=${encodeURIComponent(username)}`);
-    if (!response.ok) {
-      return false;
-    }
+    if (!response.ok) return false;
     const data = await response.json();
     return data.exists;
   } catch (error) {
@@ -161,35 +156,81 @@ class SettingsManager {
     this.saveSettings();
     this.applyEffects();
   }
+
+  // ==========================================
+  // ЭФФЕКТЫ (БЕЗ ЭМОДЗИ)
+  // ==========================================
   applyEffects() {
     const container = document.getElementById('effects-container');
     if (!container) { this.createEffectsContainer(); return this.applyEffects(); }
     container.innerHTML = '';
     const e = this.settings.effects;
-    if (e.snow) this.createParticles(container, '❄️', 30, 'fallSnow');
-    if (e.rain) this.createParticles(container, '💧', 60, 'fallRain');
-    if (e.leaves) this.createParticles(container, '🍃', 20, 'fallLeaves');
-    if (e.particles) this.createParticles(container, '✨', 40, 'floatParticles');
+    if (e.snow) this.createSnow(container);
+    if (e.rain) this.createRain(container);
+    if (e.leaves) this.createLeaves(container);
+    if (e.particles) this.createParticles(container);
   }
-  createParticles(container, char, count, animClass) {
-    for (let i = 0; i < count; i++) {
-      const p = document.createElement('div');
-      p.innerText = char;
-      p.className = 'effect-particle';
-      p.style.animationName = animClass;
-      p.style.left = Math.random() * 100 + 'vw';
-      p.style.animationDuration = (Math.random() * 3 + 2) + 's';
-      p.style.animationDelay = (Math.random() * 2) + 's';
-      p.style.fontSize = (Math.random() * 10 + 10) + 'px';
-      container.appendChild(p);
+
+  createSnow(container) {
+    for (let i = 0; i < 50; i++) {
+      const el = document.createElement('div');
+      el.className = 'snow-particle';
+      el.style.left = Math.random() * 100 + 'vw';
+      el.style.animationDuration = (Math.random() * 4 + 3) + 's';
+      el.style.animationDelay = (Math.random() * 5) + 's';
+      el.style.width = (Math.random() * 6 + 2) + 'px';
+      el.style.height = el.style.width;
+      container.appendChild(el);
     }
   }
+
+  createRain(container) {
+    for (let i = 0; i < 80; i++) {
+      const el = document.createElement('div');
+      el.className = 'rain-particle';
+      el.style.left = Math.random() * 100 + 'vw';
+      el.style.animationDuration = (Math.random() * 0.8 + 0.4) + 's';
+      el.style.animationDelay = (Math.random() * 2) + 's';
+      el.style.height = (Math.random() * 20 + 10) + 'px';
+      container.appendChild(el);
+    }
+  }
+
+  createLeaves(container) {
+    const leafChars = ['🍃', '🍂', '🍁'];
+    for (let i = 0; i < 25; i++) {
+      const el = document.createElement('div');
+      el.className = 'leaf-particle';
+      el.textContent = leafChars[Math.floor(Math.random() * leafChars.length)];
+      el.style.left = Math.random() * 100 + 'vw';
+      el.style.animationDuration = (Math.random() * 6 + 4) + 's';
+      el.style.animationDelay = (Math.random() * 6) + 's';
+      el.style.fontSize = (Math.random() * 16 + 14) + 'px';
+      container.appendChild(el);
+    }
+  }
+
+  createParticles(container) {
+    for (let i = 0; i < 60; i++) {
+      const el = document.createElement('div');
+      el.className = 'gold-particle';
+      el.style.left = Math.random() * 100 + 'vw';
+      el.style.animationDuration = (Math.random() * 5 + 3) + 's';
+      el.style.animationDelay = (Math.random() * 4) + 's';
+      el.style.width = (Math.random() * 6 + 2) + 'px';
+      el.style.height = el.style.width;
+      el.style.boxShadow = '0 0 6px #ffd700, 0 0 12px #ffaa00';
+      container.appendChild(el);
+    }
+  }
+
   resetEffects() {
     this.settings.effects = { snow: false, rain: false, leaves: false, particles: false };
     this.saveSettings();
     this.applyEffects();
     showCustomToast('Эффекты сброшены', 'success');
   }
+
   applyTheme(theme) {
     const root = document.documentElement;
     if (theme === 'light') {
@@ -238,7 +279,7 @@ class AuthManager {
     this.isCodeRequested = false;
     this.sendButtonLocked = false;
     this.resendButtonLocked = false;
-    this.isExistingUser = false; // флаг для экрана профиля
+    this.isExistingUser = false;
     
     this.token = localStorage.getItem('syncline_token') || null;
     this.user = localStorage.getItem('syncline_user') ? JSON.parse(localStorage.getItem('syncline_user')) : null;
@@ -558,7 +599,6 @@ class AuthManager {
           if (isValid) {
             this.resetRetryTimer();
             this.resendButtonLocked = false;
-            // Проверяем, существует ли пользователь
             const exists = await checkUserExists(username);
             this.isExistingUser = exists;
             this.switchScreen('auth-screen-code', 'auth-screen-profile');
@@ -597,7 +637,6 @@ class AuthManager {
       usernameDisplay.textContent = `@${this.currentUsername}`;
     }
 
-    // Обновляем заголовок и кнопку в зависимости от isExistingUser
     const updateProfileScreen = () => {
       const title = document.querySelector('#auth-screen-profile .auth-title');
       const btn = document.getElementById('btn-finish-setup');
@@ -629,7 +668,6 @@ class AuthManager {
         }
 
         if (this.isExistingUser) {
-          // Вход
           const loggedIn = await this.login(username, password);
           if (loggedIn) {
             this.switchScreen('auth-screen-profile', 'main-workspace');
@@ -637,7 +675,6 @@ class AuthManager {
             showCustomToast("Добро пожаловать!", "success");
           }
         } else {
-          // Регистрация
           const registered = await this.register(username, password);
           if (registered) {
             const loggedIn = await this.login(username, password);
@@ -650,20 +687,6 @@ class AuthManager {
         }
       });
     }
-
-    // При переключении на экран профиля обновляем текст
-    const profileObserver = new MutationObserver(() => {
-      const profileScreen = document.getElementById('auth-screen-profile');
-      if (profileScreen && profileScreen.style.display !== 'none') {
-        updateProfileScreen();
-      }
-    });
-    const codeScreenObserver = new MutationObserver(() => {
-      const codeScreenEl = document.getElementById('auth-screen-code');
-      if (codeScreenEl && codeScreenEl.style.display !== 'none') {
-        // Ничего не делаем, но нужно отследить
-      }
-    });
 
     // =====================================
     // НАСТРОЙКИ (без 2FA)
@@ -682,7 +705,6 @@ class AuthManager {
       btnCloseSettings.addEventListener('click', () => modalSettings.classList.remove('show'));
     }
 
-    // Сохранение профиля (расширенное)
     const btnSaveSettings = document.getElementById('btn-save-settings');
     if (btnSaveSettings) {
       btnSaveSettings.addEventListener('click', () => {
@@ -705,7 +727,6 @@ class AuthManager {
       });
     }
 
-    // Применение стиля
     const btnApplyStyle = document.getElementById('btn-apply-style');
     if (btnApplyStyle) {
       btnApplyStyle.addEventListener('click', () => {
@@ -791,7 +812,6 @@ class AuthManager {
       }
     }
 
-    // Завершение всех сессий
     document.querySelector('#view-security .btn-glass-secondary')?.addEventListener('click', () => {
       this.settings.settings.sessions = this.settings.settings.sessions.filter(s => s.isCurrent);
       this.settings.saveSettings();
@@ -799,7 +819,6 @@ class AuthManager {
       showCustomToast('Все сессии завершены, кроме текущей', 'success');
     });
 
-    // Кнопка выхода
     document.getElementById('btn-logout-account')?.addEventListener('click', () => {
       this.logout();
     });

@@ -1,6 +1,6 @@
 /**
  * SyncLine — Companion Manager (Чаты, Каналы, Группы, Монетка, Эмодзи, Пользователи)
- * Версия: 4.0 — Мега-апдейт
+ * Версия: 4.1 — Финальная
  */
 
 class CompanionManager {
@@ -766,13 +766,16 @@ class CompanionManager {
       return 0;
     });
 
+    // Фильтруем заблокированных
     const visible = sorted.filter(c => {
       if (c.isSaved) return true;
       return !this.blockedUsers.includes(c.username);
     });
 
+    // Поиск
     const filtered = visible.filter(c => c.username.toLowerCase().includes(filter.toLowerCase()));
 
+    // Если никого не найдено и есть фильтр – показываем "не найден"
     if (filtered.length === 0 && filter) {
       const notFound = document.createElement('div');
       notFound.className = 'glass-panel';
@@ -974,7 +977,7 @@ class CompanionManager {
   }
 
   // ==========================================
-  // ОСТАЛЬНЫЕ МЕТОДЫ
+  // ОСТАЛЬНЫЕ МЕТОДЫ (без изменений)
   // ==========================================
   pinChat() {
     const chat = this.contextChat;

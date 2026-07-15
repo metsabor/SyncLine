@@ -103,15 +103,13 @@ def send_telegram_code(chat_id: str, code: str):
     url = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendMessage"
     text = f"""🔐 **Код для входа в SyncLine: *{code}***
 
-*Не давайте этот код никому, даже если кто-то представляется сотрудником SyncLine.*
-
-Этот код используется для входа в Ваш аккаунт. Он не может быть использован для чего-либо ещё.
+Не давайте этот код никому, даже если кто-то представляется сотрудником SyncLine.
 
 Если Вы не запрашивали код для входа в аккаунт на другом устройстве, проигнорируйте это сообщение.
 
----
+
 *С наилучшими пожеланиями,*  
-**Команда SyncLine**"""
+*Команда SyncLine*"""
     payload = {"chat_id": chat_id, "text": text, "parse_mode": "Markdown"}
     try:
         response = requests.post(url, json=payload, timeout=10)
