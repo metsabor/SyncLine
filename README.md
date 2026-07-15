@@ -23,7 +23,7 @@
 *Для macOS и Linux — сборка в разработке.*
 
 >*Скачать готовый установщик*
->Перейдите в раздел [Скачать установщик SyncLine](https://drive.usercontent.google.com/download?id=1X_HcBPcytfnLgoxqRKGbxDusy_CUuQ-a&export=download&authuser=0) и скачайте последнюю версию `SyncLine.exe` для Windows.
+>Перейдите в раздел [Скачать установщик SyncLine](https://drive.usercontent.google.com/download?id=1G9Gm1SPcR7rkz9PHHtlAe4GEQABkRc3I&export=download&authuser=0) и скачайте последнюю версию `SyncLine.exe` для Windows.
 
 
 
