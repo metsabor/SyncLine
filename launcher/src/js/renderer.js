@@ -1,6 +1,6 @@
 /**
  * SyncLine — Frontend Core Engine (Глобальные UI-утилиты)
- * Версия: 3.5 — Дивергентный апгрейд
+ * Версия: 4.0 — Мега-апдейт
  */
 
 // ==========================================
@@ -91,7 +91,7 @@ function initDiscordServers() {
 }
 
 // ==========================================
-// УПРАВЛЕНИЕ ОКНОМ НАСТРОЕК (дублируется с auth.js, но для надёжности)
+// УПРАВЛЕНИЕ ОКНОМ НАСТРОЕК
 // ==========================================
 function initFullscreenSettings() {
     const settingsOverlay = document.querySelector(".settings-fullscreen-overlay");
@@ -175,35 +175,35 @@ function initTelegramCropper() {
     });
 
     saveCrop.addEventListener("click", () => {
-        const targetAvatars = document.querySelectorAll(".user-avatar, .profile-large-avatar");
-        targetAvatars.forEach(el => {
-            if (el.tagName === 'IMG') el.src = cropImg.src;
-            else {
-                el.style.backgroundImage = `url('${cropImg.src}')`;
-                el.style.backgroundSize = 'cover';
-            }
-        });
+        // Обновляем аватарку только текущего пользователя (не бота и не избранное)
+        const currentAva = document.getElementById('current-user-avatar');
+        if (currentAva) {
+            currentAva.style.backgroundImage = `url('${cropImg.src}')`;
+            currentAva.style.backgroundSize = 'cover';
+            currentAva.innerHTML = '';
+        }
+        // Также обновляем в настройках
+        const settingsAva = document.getElementById('settings-my-avatar');
+        if (settingsAva) {
+            settingsAva.style.backgroundImage = `url('${cropImg.src}')`;
+            settingsAva.style.backgroundSize = 'cover';
+            settingsAva.innerHTML = '';
+        }
+        // Сохраняем в localStorage
+        localStorage.setItem('syncline_avatar', cropImg.src);
         cropOverlay.classList.remove("show");
         showCustomToast("Аватар успешно обновлен", "success");
     });
 }
 
 // ==========================================
-// УПРАВЛЕНИЕ МИНИ-ПЛЕЕРОМ (кнопки, прогресс)
+// УПРАВЛЕНИЕ МИНИ-ПЛЕЕРОМ
 // ==========================================
 function initPlayerControls() {
     // Кнопки управления уже обрабатываются в companion.js,
-    // но здесь мы добавляем вспомогательные визуальные эффекты,
-    // например, подсветку при наведении.
+    // но здесь мы добавляем вспомогательные визуальные эффекты.
     const playBtn = document.querySelector('.player-btn.play-pause');
     if (!playBtn) return;
-
-    // Добавляем эффект пульсации при воспроизведении
-    const progressFill = document.querySelector('.player-progress-fill');
-    if (progressFill) {
-        // Можно добавить анимацию свечения при воспроизведении
-        // Но основная логика в companion.js
-    }
 
     // Обработчики кнопок для переключения треков (дублируем для надёжности)
     const prevBtn = document.querySelector('#btn-prev-track');
@@ -228,7 +228,4 @@ function initPlayerControls() {
             }
         });
     }
-
-    // Также можно добавить обработчик для загрузки музыки,
-    // но это уже есть в companion.js
 }

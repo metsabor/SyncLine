@@ -19,9 +19,51 @@
   ],
   "author": "SyncLine Team",
   "license": "MIT",
+  "build": {
+    "appId": "com.syncline.app",
+    "productName": "SyncLine",
+    "directories": {
+      "output": "build",
+      "buildResources": "buildResources"
+    },
+    "files": [
+      "main.js",
+      "preload.js",
+      "src/**/*",
+      "node_modules/**/*"
+    ],
+    "extraResources": [
+      {
+        "from": "src/assets",
+        "to": "assets"
+      }
+    ],
+    "win": {
+      "target": "nsis",
+      "icon": "src/assets/images/icon.ico",
+      "publisherName": "SyncLine Team",
+      "certificateFile": "",
+      "certificatePassword": ""
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true
+    },
+    "mac": {
+      "target": "dmg",
+      "icon": "src/assets/images/icon.icns"
+    },
+    "linux": {
+      "target": "AppImage",
+      "icon": "src/assets/images/icon.png"
+    }
+  },
   "devDependencies": {
     "electron": "^28.2.0",
-    "electron-builder": "^24.9.0"
+    "electron-builder": "^24.9.0",
+    "electron-packager": "^17.1.2"
   },
   "dependencies": {
     "livekit-client": "^2.0.0"

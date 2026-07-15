@@ -13,6 +13,7 @@ class CompanionManager {
     this.verifiedUsers = [];
     this.isInitialized = false;
     this.allUsers = [];
+    this.isLoadingUsers = false;
 
     if (window.settingsManager) {
       this.blockedUsers = window.settingsManager.settings.blockedUsers || [];
@@ -99,8 +100,10 @@ class CompanionManager {
       this.initCreateChannelModal();
       this.initEmojiPicker();
       this.checkStreaks();
-      // Загружаем пользователей после авторизации
-      this.loadUsers();
+      // Загружаем пользователей, если уже есть токен
+      if (window.authManager && window.authManager.token) {
+        this.loadUsers();
+      }
     }
   }
 
@@ -132,23 +135,35 @@ class CompanionManager {
   // ЗАГРУЗКА ПОЛЬЗОВАТЕЛЕЙ С СЕРВЕРА
   // ==========================================
   async loadUsers() {
+    if (this.isLoadingUsers) return;
+    this.isLoadingUsers = true;
+
     try {
       const token = window.authManager?.token;
-      if (!token) return;
+      if (!token) {
+        this.isLoadingUsers = false;
+        return;
+      }
 
-      const response = await fetch(`${window.authManager?.API_URL || 'https://syncline-f44k.onrender.com'}/api/users`, {
+      const API_URL = window.authManager?.API_URL || 'https://syncline-f44k.onrender.com';
+      const response = await fetch(`${API_URL}/api/users`, {
         headers: {
           'Authorization': `Bearer ${token}`
         }
       });
-      if (!response.ok) return;
+      if (!response.ok) {
+        this.isLoadingUsers = false;
+        return;
+      }
       const data = await response.json();
       if (data.users) {
         this.allUsers = data.users;
         // Добавляем пользователей в список чатов
+        const currentUser = window.authManager?.user?.username;
         data.users.forEach(user => {
+          if (user.username === currentUser) return; // пропускаем себя
           const exists = this.chats.some(c => c.username === user.username && !c.isSaved);
-          if (!exists && user.username !== window.authManager?.user?.username) {
+          if (!exists) {
             this.chats.push({
               id: 'user_' + user.username,
               username: user.username,
@@ -173,6 +188,8 @@ class CompanionManager {
       }
     } catch (error) {
       console.error('Ошибка загрузки пользователей:', error);
+    } finally {
+      this.isLoadingUsers = false;
     }
   }
 
@@ -538,7 +555,7 @@ class CompanionManager {
     this.renderMessages();
     this.renderChatList();
     this.saveChatsToStorage();
-    this.checkStreaks(); // Обновляем стрики
+    this.checkStreaks();
   }
 
   sendFileMessage(filePath, comment = '', isOneTime = false) {
@@ -588,7 +605,7 @@ class CompanionManager {
   }
 
   // ==========================================
-  // ОТРИСОВКА СООБЩЕНИЙ (С МОНЕТКОЙ И ЭМОДЗИ)
+  // ОТРИСОВКА СООБЩЕНИЙ
   // ==========================================
   renderMessages() {
     const container = document.getElementById('messages-container');
@@ -662,7 +679,7 @@ class CompanionManager {
         .join('');
     }
 
-    // Монетка (если есть)
+    // Монетка
     let coinHtml = '';
     if (msgData.coinEarned) {
       coinHtml = `<div class="coin-earned"><i class="fa-solid fa-coins"></i> +1 монета! 🪙</div>`;
@@ -737,6 +754,11 @@ class CompanionManager {
     const container = document.getElementById('chat-list-container');
     if (!container) return;
     container.innerHTML = '';
+
+    // Если пользователей ещё нет, но есть токен – загружаем
+    if (window.authManager?.token && this.allUsers.length === 0 && !this.isLoadingUsers) {
+      this.loadUsers();
+    }
 
     const sorted = [...this.chats].sort((a, b) => {
       if (a.pinned && !b.pinned) return -1;
@@ -864,15 +886,25 @@ class CompanionManager {
   }
 
   // ==========================================
-  // МОДАЛКА СОЗДАНИЯ КАНАЛА/ГРУППЫ
+  // МОДАЛКА СОЗДАНИЯ КАНАЛА/ГРУППЫ (ИСПРАВЛЕНО)
   // ==========================================
   initCreateChannelModal() {
     const addBtn = document.querySelector('.server-icon.add-server');
-    if (!addBtn) return;
+    if (!addBtn) {
+      console.warn('Кнопка создания канала не найдена');
+      return;
+    }
 
-    addBtn.addEventListener('click', () => {
+    // Удаляем старые обработчики, чтобы не дублировалось
+    const newAddBtn = addBtn.cloneNode(true);
+    addBtn.parentNode.replaceChild(newAddBtn, addBtn);
+
+    newAddBtn.addEventListener('click', () => {
       const modal = document.getElementById('modal-create-channel');
-      if (!modal) return;
+      if (!modal) {
+        showCustomToast('Ошибка: модалка не найдена', 'error');
+        return;
+      }
       modal.style.display = 'flex';
       document.getElementById('create-channel-name').value = '';
       document.getElementById('create-channel-username').value = '';
@@ -942,7 +974,7 @@ class CompanionManager {
   }
 
   // ==========================================
-  // ОСТАЛЬНЫЕ МЕТОДЫ (без изменений)
+  // ОСТАЛЬНЫЕ МЕТОДЫ
   // ==========================================
   pinChat() {
     const chat = this.contextChat;
@@ -1232,7 +1264,7 @@ class CompanionManager {
       document.getElementById('modal-user-profile').style.display = 'none';
     });
 
-    // Голосовые кнопки (оставляем только для пользовательских чатов)
+    // Голосовые кнопки
     document.getElementById('btn-join-voice')?.addEventListener('click', () => {
       if (this.activeChat && !this.activeChat.isSaved && this.activeChat.id !== 'bot') {
         const roomName = `voice-${this.activeChat.id}`;
@@ -1396,7 +1428,7 @@ class CompanionManager {
   }
 
   // ==========================================
-  // ГОЛОСОВЫЕ КАНАЛЫ (ОСТАВЛЯЕМ)
+  // ГОЛОСОВЫЕ КАНАЛЫ
   // ==========================================
   async joinVoiceRoom(roomName) {
     try {

@@ -798,7 +798,7 @@ body, html {
 .context-btn i { width: 18px; }
 
 /* ========================================== */
-/*   ЭФФЕКТЫ                                  */
+/*   ЭФФЕКТЫ (БЕЗ ЭМОДЗИ)                     */
 /* ========================================== */
 #effects-container {
   position: fixed;
@@ -807,34 +807,64 @@ body, html {
   width: 100vw;
   height: 100vh;
   pointer-events: none;
-  z-index: 8000;
+  z-index: 9999;
   overflow: hidden;
 }
-.effect-particle {
-  position: absolute;
-  top: -50px;
-  user-select: none;
+
+.snow-particle {
+  position: fixed;
+  top: -10px;
+  border-radius: 50%;
+  background: white;
+  opacity: 0.8;
   pointer-events: none;
-  animation-timing-function: linear;
-  animation-iteration-count: infinite;
+  animation: fallSnow linear infinite;
+  z-index: 9999;
+}
+@keyframes fallSnow {
+  0% { transform: translateY(0) translateX(0); opacity: 0.8; }
+  100% { transform: translateY(110vh) translateX(30px); opacity: 0.2; }
 }
 
-@keyframes fallSnow {
-  0% { transform: translateY(-50px) translateX(0) rotate(0deg); opacity: 0.8; }
-  100% { transform: translateY(110vh) translateX(50px) rotate(360deg); opacity: 0.2; }
+.rain-particle {
+  position: fixed;
+  top: -20px;
+  width: 2px;
+  background: rgba(100, 180, 255, 0.3);
+  pointer-events: none;
+  animation: fallRain linear infinite;
+  z-index: 9999;
 }
 @keyframes fallRain {
-  0% { transform: translateY(-50px) translateX(0); opacity: 0.6; }
-  100% { transform: translateY(110vh) translateX(10px); opacity: 0; }
+  0% { transform: translateY(0) rotate(15deg); opacity: 0.6; }
+  100% { transform: translateY(110vh) rotate(15deg); opacity: 0; }
+}
+
+.leaf-particle {
+  position: fixed;
+  top: -30px;
+  pointer-events: none;
+  animation: fallLeaves linear infinite;
+  z-index: 9999;
 }
 @keyframes fallLeaves {
-  0% { transform: translateY(-50px) translateX(0) rotate(0deg); opacity: 0.9; }
-  100% { transform: translateY(110vh) translateX(-80px) rotate(720deg); opacity: 0; }
+  0% { transform: translateY(0) translateX(0) rotate(0deg); opacity: 1; }
+  100% { transform: translateY(110vh) translateX(80px) rotate(720deg); opacity: 0; }
 }
-@keyframes floatParticles {
-  0% { transform: translateY(110vh) scale(0); opacity: 0; }
-  50% { opacity: 0.8; }
-  100% { transform: translateY(-10vh) scale(1.5); opacity: 0; }
+
+.gold-particle {
+  position: fixed;
+  top: -10px;
+  border-radius: 50%;
+  background: radial-gradient(circle, #ffd700, #ffaa00);
+  pointer-events: none;
+  animation: floatGold linear infinite;
+  z-index: 9999;
+}
+@keyframes floatGold {
+  0% { transform: translateY(0) scale(1); opacity: 0.8; }
+  50% { opacity: 1; }
+  100% { transform: translateY(110vh) scale(0.3); opacity: 0; }
 }
 
 /* ========================================== */
