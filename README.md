@@ -26,6 +26,8 @@
 >Перейдите в раздел [Скачать установщик SyncLine](https://drive.google.com/file/d/1X_HcBPcytfnLgoxqRKGbxDusy_CUuQ-a/view?usp=sharing) и скачайте последнюю версию `SyncLine.exe` для Windows.
 
 
+
+
 ```bash
 С наилучшими пожеланиями,  
 Команда SyncLine.
